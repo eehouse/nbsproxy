@@ -29,6 +29,9 @@ import android.telephony.SmsManager;
 import android.telephony.SmsMessage;
 import android.util.Base64;
 import android.util.Log;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 
 import java.util.Arrays;
 
@@ -41,20 +44,32 @@ public class RequestReceiver extends BroadcastReceiver {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata".equals( intent.getType() ) ) {
-            short port = (short)Short.valueOf( context.getString( R.string.nbs_port ) );
+            short port = Short.valueOf( context.getString( R.string.nbs_port ) );
             String phone = intent.getStringExtra( "PHONE" );
+            String appID = intent.getStringExtra( "APPID" );
+            int code = appID.hashCode();
             String text = intent.getStringExtra( Intent.EXTRA_TEXT );
             byte[] data = Base64.decode( text, Base64.NO_WRAP );
-            int hash = intent.getIntExtra( "HASH", 0 );
-            Log.d( TAG, "calculated hash: " + Arrays.hashCode(data)
-                   + "; received hash: " + hash );
 
-            SmsManager mgr = SmsManager.getDefault();
-            PendingIntent sent = null; // makeStatusIntent( MSG_SENT );
-            PendingIntent delivery = null; // makeStatusIntent( MSG_DELIVERED );
-            mgr.sendDataMessage( phone, null, port, data, sent, delivery );
-            Log.d( TAG, "sent " + data.length + " bytes to port "
-                   + port + " on " + phone );
+            // The data we send will prepend the hashcode of the target
+            // appID. Yeah. conflict's possible. Sue me. Once it happens.
+            try {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                DataOutputStream dos = new DataOutputStream( baos );
+                dos.writeInt( code );
+                dos.write( data, 0, data.length );
+                dos.flush();
+                data = baos.toByteArray();
+            
+                SmsManager mgr = SmsManager.getDefault();
+                PendingIntent sent = null; // makeStatusIntent( MSG_SENT );
+                PendingIntent delivery = null; // makeStatusIntent( MSG_DELIVERED );
+                mgr.sendDataMessage( phone, null, port, data, sent, delivery );
+                Log.d( TAG, "sent " + data.length + " bytes to port "
+                       + port + " on " + phone );
+            } catch ( IOException ioe ) {
+                Log.e( TAG, "ioe: " + ioe );
+            }
         }
     }
 }
