@@ -1,0 +1,6 @@
+* Get permissions! Likely will want to offer "uninstall" option to those who refuse.
+
+* Add "register" API, and send hashcode of appID at beginning of every message.
+
+* On receiver, use the hashcode to look up appID among registered apps
+  and broadcast to that

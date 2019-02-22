@@ -1,7 +1,5 @@
 apply plugin: 'com.android.application'
 
-def TEST_PHONE = System.getenv("TEST_PHONE")
-
 android {
     compileSdkVersion 27
     defaultConfig {
@@ -15,12 +13,10 @@ android {
     buildTypes {
 		all {
 			resValue "string", "nbs_port", "4369"
-            buildConfigField "String", "TEST_PHONE", "\"${TEST_PHONE}\""
 		}
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-
         }
     }
 }

@@ -66,8 +66,10 @@ public class NBSReceiver extends BroadcastReceiver {
         Intent intent = new Intent()
             .setAction( Intent.ACTION_SEND )
             .putExtra( Intent.EXTRA_TEXT, asStr )
+            .putExtra( "PHONE", phone )
             .setPackage( "org.eehouse.android.xw4dbg" )
-            .setType( "text/nbsdata" );
+            .setType( "text/nbsdata" )
+            ;
         try {
             context.startActivity( intent );
         } catch ( android.content.ActivityNotFoundException anfe ) {
