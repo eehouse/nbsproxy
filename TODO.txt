@@ -1,13 +1,11 @@
-* Add "register" API, and send hashcode of appID at beginning of every message.
-
-* On receiver, use the hashcode to look up appID among registered apps
-  and broadcast to that
-
-* Get permissions! Likely will want to offer "uninstall" option to those who refuse.
+* Get permissions! Likely will want to offer "uninstall" option to
+  those who refuse.
 
 * Add DB for registering, but also for tracking stats. Track number of
   bytes sent and received on which app's behalf. Maybe the UI shows
-  these stats, at least in DEBUG build.
+  these stats, at least in DEBUG build. Might be enough to store
+  everything in Serializable objects and write them to preferences as
+  Strings.
 
 * Figure out what user sees when launching the app, besides a "nothing
   to see here" message. Maybe list of apps that are using it at least,

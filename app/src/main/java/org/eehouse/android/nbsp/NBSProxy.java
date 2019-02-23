@@ -19,35 +19,70 @@
 
 package org.eehouse.android.nbsp;
 
-import android.util.Base64;
+import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Base64;
 import android.util.Log;
+
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
-/*
+/**
  * This is the public api for the NBSProxy app. It (i.e. this file) is meant
  * to be included in a client app's source tree, after which the client just
- * calls NBSProxy.send().
+ * calls NBSProxy.register() from Application.onCreate() and NBSProxy.send()
+ * from anywhere
  *
  * Note that the client must also provide an entrypoint for incoming messages
- * from NBSProxy something like this:
-
-    <activity android:name="NBSReceive">
-      <intent-filter>
-        <action android:name="android.intent.action.SEND" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <data android:mimeType="text/nbsdata" />
-      </intent-filter>
-    </activity>
-
- * in which the receiver of the Intent calls NBSProxy.getFrom( intent ) to
- * retrieve the sender's phone number and data.
+ * from NBSProxy thus (literally):
+ *
+ *  <receiver android:name="org.eehouse.android.nbsp.NBSProxy">
+ *    <intent-filter>
+ *      <action android:name="android.intent.action.SEND" />
+ *      <category android:name="android.intent.category.DEFAULT" />
+ *      <data android:mimeType="text/nbsdata" />
+ *    </intent-filter>
+ *  </receiver>
+ *
+ * With the receiver in place, incoming NBS messages are delivered to the
+ * callback passed to register().
  */
 
-public class NBSProxy {
+public class NBSProxy extends BroadcastReceiver {
     private static final String TAG = NBSProxy.class.getSimpleName();
+    private static WeakReference<OnReceived> sProcRef;
+
+    public interface OnReceived {
+        void onDataReceived( Context context, String fromPhone, byte[] data );
+    }
+
+    /**
+     * Meant to be called by your Application's onCreate (which should be
+     * called as part of bringing you up for a BroadcastReceiver to be
+     * called), this allows you to register the callback that will receive the
+     * data in each incoming message.
+     *
+     * @param proc reference to your callback that <em>MUST</em> be an
+     * Application instance that implements NBSProxy.OnReceived. That's to
+     * force you to pass something that won't be gc'd prematurely, which in
+     * turn lets me store it in a WeakReference that won't cause any leaks.
+     * You don't need to clear it later by passing null: gc's magic.
+     */
+    public static void register( OnReceived proc )
+    {
+        Log.d( TAG, "register(" + proc + ")" );
+
+        // Caller can't just call <code>register( new OnReceived(){} )</code>
+        // or with no other reference to the proc it'll get gc'd. So force
+        // them to pass an Application that implements OnReceived. If other's
+        // use this and care, I'll address.
+        assert( proc instanceof Application );
+
+        sProcRef = new WeakReference<>( proc );
+    }
 
     /**
      * sends data to app on remote device. Size limit of around 140 bytes.
@@ -75,34 +110,32 @@ public class NBSProxy {
         Log.d( TAG, "launching intent at: org.eehouse.android.nbsp" );
     }
 
-    public static class Incoming {
-        public String phone;
-        public byte[] data;
-        Incoming( String pPhone, byte[] pData ) {
-            phone = pPhone;
-            data = pData;
-        }
-    }
 
-    /**
-     * Pulls data out of intent and decodes into Incoming pojo whence sender
-     * phone number and data can be retrieved.
-     *
-     * @param intent Intent passed into client's BroadcastReceiver or app by
-     * that likely came from NBSProxy instance on device.
-     * @return Incoming pojo, or null if not successful
-     */
-    public static Incoming getFrom( Intent intent ) {
-        Incoming result = null;
-        if ( Intent.ACTION_SEND.equals(intent.getAction())
+    @Override
+    public void onReceive( Context context, Intent intent )
+    {
+        Log.d( TAG, "onReceive()" );
+        if ( intent != null
+             && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata".equals( intent.getType() ) ) {
             String text = intent.getStringExtra( Intent.EXTRA_TEXT );
             String phone = intent.getStringExtra( "PHONE" );
             if ( text != null && phone != null ) {
                 byte[] data = Base64.decode( text, Base64.NO_WRAP );
-                result = new Incoming( phone, data );
+                boolean sent = false;
+                if ( sProcRef != null ) {
+                    OnReceived proc = sProcRef.get();
+                    if ( proc != null ) {
+                        Log.d( TAG, "passing " + data.length + " bytes from "
+                               + phone );
+                        proc.onDataReceived( context, phone, data );
+                        sent = true;
+                    }
+                }
+                if ( !sent ) {
+                    Log.e( TAG, "no callback found; message dropped" );
+                }
             }
         }
-        return result;
     }
 }

@@ -39,7 +39,7 @@ knows a bit of Android can verify in minutes that it's not doing
 anything nasty. Because there's a lot of concern these days about
 anything with "SMS" in its name....
 
-The comments in NBSProxy.java describe how to use this app from your
+The javadoc comments in NBSProxy.java describe how to use this app from your
 app.
 
 If you're interested in using it, or in helping with development,

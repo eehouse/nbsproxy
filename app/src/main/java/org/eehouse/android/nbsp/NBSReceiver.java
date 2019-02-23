@@ -86,7 +86,7 @@ public class NBSReceiver extends BroadcastReceiver {
                 .setPackage( appID )
                 .setType( "text/nbsdata" )
                 ;
-            context.startActivity( intent );
+            context.sendBroadcast( intent );
         } catch ( android.content.ActivityNotFoundException anfe ) {
             Log.e( TAG, "ActivityNotFoundException: " + anfe.getMessage() );
         } catch ( IOException ioe ) {
