@@ -1,0 +1,28 @@
+<resources>
+    <string name="explaination">NBSProxy exists only to forward small
+    binary messages via Narrow Band Sockets (called \"data sms\" in
+    the Android world) on behalf of other applications you\'ve
+    installed.\n\nBecause NBS is a low-level feature of the GSM cell
+    phone infrastructure, they only work on GSM networks (i.e. pretty
+    much every network in the world except the US carriers Verizon and
+    Sprint.)</string>
+
+    <string name="permissions1">To function, NBSProxy requires
+    permission to send and receive SMS messages. That\'s because in
+    the Android world NBS messages are considered a type of SMS,
+    though in fact they\'re completely orthogonal to the user-visible
+    text messages you probably exchange with friends and
+    family.</string>
+    <string name="permissions2">When you enable the permission below
+    you\'ll see an Android system dialog prompting you to
+    confirm. Disabling the permission requires no
+    confirmation.</string>
+
+    <string name="perms_checkbox_label">Grant SMS permission</string>
+
+    <string name="delete_expl">If you\'re not on a GSM phone or if
+    you\'re not comfortable granting the permissions NBSProxy needs,
+    you might as well uninstall. No hard feelings :-)</string>
+
+    <string name="uninstall_button_label">Uninstall</string>
+</resources>
