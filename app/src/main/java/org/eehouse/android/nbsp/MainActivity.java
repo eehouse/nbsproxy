@@ -40,26 +40,22 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.support.design.widget.TabLayout;
 
+import org.eehouse.android.nbsp.ui.PageFragment;
+
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final int PERMISSIONS_REQUEST = 4351;
-    private static final String[] PERMISSIONS_REQUIRED = {
-        Manifest.permission.RECEIVE_SMS,
-        Manifest.permission.SEND_SMS,
-    };
     // Keep these two arrays in sync
     private static final int sTabTitles[] = { R.string.tab_about_title,
                                               R.string.tab_perms_title,
                                               R.string.tab_test_title,
                                               R.string.tab_stats_title,
     };
-    static final int[] sLayouts = {R.layout.fragment_about,
+    public static final int[] sLayouts = {R.layout.fragment_about,
                                    R.layout.fragment_perms,
                                    R.layout.fragment_test,
                                    R.layout.fragment_stats,
     };
 
-    private CheckBox mPermsCheck;
 
     // This will be required eventually to request permissions.
     @Override
@@ -75,64 +71,6 @@ public class MainActivity extends AppCompatActivity {
         // Give the TabLayout the ViewPager
         TabLayout tabLayout = (TabLayout)findViewById( R.id.sliding_tabs );
         tabLayout.setupWithViewPager( viewPager );
-
-        // mPermsCheck = (CheckBox)findViewById( R.id.perms_checkbox);
-        // recheckCheck();
-        // mPermsCheck.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-        //         @Override
-        //         public void onCheckedChanged(CompoundButton cb,
-        //                                      boolean checked) {
-        //             Log.d( TAG, "got: " + checked );
-        //             if (checked) {
-        //                 requestPermissions();
-        //             } else {
-        //                 disablePermissions();
-        //             }
-        //         }
-        //     } );
-
-        // findViewById(R.id.uninstall_button)
-        //     .setOnClickListener(new View.OnClickListener() {
-        //             @Override
-        //             public void onClick(View view) {
-        //                 Intent intent = new Intent(Intent.ACTION_DELETE)
-        //                     .setData(Uri.parse("package:" + BuildConfig.APPLICATION_ID ) )
-        //                     .putExtra( "android.intent.extra.UNINSTALL_ALL_USERS", true);
-        //                 startActivity(intent);
-        //             }
-        //         } );
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[],
-                                           int[] grantResults )
-    {
-        if (requestCode == PERMISSIONS_REQUEST) {
-            recheckCheck();
-        }
-    }
-
-    private void recheckCheck()
-    {
-        mPermsCheck.setChecked( havePermissions() );
-    }
-
-    private boolean havePermissions()
-    {
-        boolean granted = true;
-        for ( String perm : PERMISSIONS_REQUIRED ) {
-            granted = granted &&
-                (ContextCompat.checkSelfPermission(this, perm ) == PackageManager.PERMISSION_GRANTED);
-        }
-        return granted;
-    }
-
-    private void requestPermissions() {
-        ActivityCompat.requestPermissions(this, PERMISSIONS_REQUIRED, PERMISSIONS_REQUEST);
-    }
-
-    private void disablePermissions() {
     }
 
     public class SampleFragmentPagerAdapter extends FragmentPagerAdapter {
@@ -145,7 +83,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public int getCount() {
+        public int getCount()
+        {
             return sTabTitles.length;
         }
 

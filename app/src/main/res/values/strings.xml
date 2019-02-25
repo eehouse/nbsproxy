@@ -1,5 +1,5 @@
 <resources>
-    <string name="explaination">NBSProxy exists only to forward small
+    <string name="about_expl">NBSProxy exists only to forward small
     binary messages via Narrow Band Sockets (called \"data sms\" in
     the Android world) on behalf of other applications you\'ve
     installed.\n\nBecause NBS is a low-level feature of the GSM cell
@@ -7,24 +7,38 @@
     much every network in the world except the US carriers Verizon and
     Sprint.)</string>
 
-    <string name="permissions1">To function, NBSProxy requires
+    <string name="main_perms_expl">To function, NBSProxy requires
     permission to send and receive SMS messages. That\'s because in
     the Android world NBS messages are considered a type of SMS,
     though in fact they\'re completely orthogonal to the user-visible
     text messages you probably exchange with friends and
     family.</string>
-    <string name="permissions2">When you enable the permission below
-    you\'ll see an Android system dialog prompting you to
-    confirm. Disabling the permission requires no
-    confirmation.</string>
 
-    <string name="perms_checkbox_label">Grant SMS permission</string>
+    <string name="permissions2">When you tap the \"Grant Permissions\"
+    button below you\'ll see up to two Android system dialogs
+    prompting you to confirm. You\'ll be asked to confirm SMS messages
+    and managing phone calls. I have no idea why Android requires the
+    latter for sending NBS data, but it does.</string>
+
+    <string name="have_perms">NBSProxy has already been granted the
+    permissions it needs to function. You may never need to launch it
+    again.</string>
+
+    <string name="perms_button_label">Request Permissions</string>
+
+    <string name="uninstall_button_label">Uninstall</string>
+    <string name="exit_button_label">Done</string>
+
+    <string name="settings_expl">The built-in Settings app is where
+    you go to view or revoke permissions. (You can also uninstall
+    using Settings, but the \"Uninstall\" button below works \"for all
+    users\", which is probably what you want.)</string>
+
+    <string name="settings_button_label">Launch Settings</string>
 
     <string name="delete_expl">If you\'re not on a GSM phone or if
     you\'re not comfortable granting the permissions NBSProxy needs,
     you might as well uninstall. No hard feelings :-)</string>
-
-    <string name="uninstall_button_label">Uninstall</string>
 
     <string name="tab_about_title">About</string>
     <string name="tab_perms_title">Permissions</string>

@@ -13,20 +13,79 @@
       android:orientation="vertical"
       android:padding="10dp"
       >
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/permissions2"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        />
+
+    <!-- Show one of {have_perms,needPerms} -->
+    <LinearLayout android:orientation="vertical"
+                  android:layout_height="wrap_content"
+                  android:layout_width="match_parent"
+                  android:id="@+id/need_perms"
+                  >
+      <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/main_perms_expl"
+          android:textAppearance="?android:attr/textAppearanceMedium"
+          />
+
+      <Space android:layout_height="20dp" android:layout_width="match_parent"/>
+      <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/permissions2"
+          android:textAppearance="?android:attr/textAppearanceMedium"
+          />
+
+      <Button android:id="@+id/perms_button"
+              android:layout_width="fill_parent"
+              android:layout_height="wrap_content"
+              android:text="@string/perms_button_label"
+              />
+    </LinearLayout>
+
+    <LinearLayout android:orientation="vertical"
+                  android:layout_height="wrap_content"
+                  android:layout_width="match_parent"
+                  android:id="@+id/have_perms"
+                  >
+      <TextView android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/have_perms"
+                android:textAppearance="?android:attr/textAppearanceMedium"
+                />
+      <Button android:id="@+id/exit_button"
+              android:layout_width="fill_parent"
+              android:layout_height="wrap_content"
+              android:text="@string/exit_button_label"
+              />
+    </LinearLayout>
 
     <Space android:layout_height="20dp" android:layout_width="match_parent"/>
 
-    <CheckBox android:id="@+id/perms_checkbox"
-              android:text="@string/perms_checkbox_label"
-              android:layout_width="fill_parent"
+    <TextView android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:textSize="20dp"
-              />
+              android:text="@string/settings_expl"
+              android:textAppearance="?android:attr/textAppearanceMedium"
+        />
+
+    <Button android:id="@+id/settings_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/settings_button_label"
+        />
+
+    <!-- From here down duplicated in about_perms -->
+    <Space android:layout_height="20dp" android:layout_width="match_parent"/>
+
+    <TextView android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:text="@string/delete_expl"
+              android:textAppearance="?android:attr/textAppearanceMedium"
+        />
+
+    <Button android:id="@+id/uninstall_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/uninstall_button_label"
+        />
   </LinearLayout>
 </ScrollView>

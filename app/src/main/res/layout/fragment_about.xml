@@ -16,17 +16,23 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/explaination"
+        android:text="@string/about_expl"
         android:textAppearance="?android:attr/textAppearanceMedium"
         />
 
+    <!-- From here down duplicated in fragment_perms -->
     <Space android:layout_height="20dp" android:layout_width="match_parent"/>
 
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/permissions1"
-        android:textAppearance="?android:attr/textAppearanceMedium"
+    <TextView android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:text="@string/delete_expl"
+              android:textAppearance="?android:attr/textAppearanceMedium"
+        />
+
+    <Button android:id="@+id/uninstall_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/uninstall_button_label"
         />
   </LinearLayout>
 </ScrollView>
