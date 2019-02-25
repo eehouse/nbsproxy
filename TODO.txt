@@ -1,3 +1,18 @@
+Let's try tabs. ABOUT, PERMISSIONS, TEST, and STATS?
+
+PERMISSIONS requests permission. Will likely launch into that on first
+install, and be able to post a notification that launches to that when
+unable to send the first time.
+
+ABOUT is the explanation of why the app exists.
+
+TEST lets you send an MSB message to yourself to verify it all
+works. May require a new permission to look up phone number. I *don't*
+want to allow send to arbitrary numbers.
+
+Stats show what apps are using and how many messages and bytes have
+been sent/received on their behalf.
+
 * Get permissions! Likely will want to offer "uninstall" option to
   those who refuse.
 

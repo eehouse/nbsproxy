@@ -25,4 +25,9 @@
     you might as well uninstall. No hard feelings :-)</string>
 
     <string name="uninstall_button_label">Uninstall</string>
+
+    <string name="tab_about_title">About</string>
+    <string name="tab_perms_title">Permissions</string>
+    <string name="tab_test_title">Test</string>
+    <string name="tab_stats_title">Statistics</string>
 </resources>
