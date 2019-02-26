@@ -36,20 +36,37 @@ import org.eehouse.android.nbsp.R;
 
 public class TestFragment extends PageFragment {
     private static final String TAG = TestFragment.class.getSimpleName();
+
+    private Button mTestButton;
+
     @Override
     void onViewCreated( View view )
     {
-        Button button = (Button)view.findViewById( R.id.test_button );
-        button.findViewById( R.id.test_button )
+        mTestButton = (Button)view.findViewById( R.id.test_button );
+        mTestButton.findViewById( R.id.test_button )
             .setOnClickListener( new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
                         runTest();
                     }
                 } );
+        setButtonText();
+    }
 
+    // This works to update the phone number after permission's granted
+    // because it's called as a result of the OS's permissions alert losing
+    // focus in our favor, causing the whole activity to resume. It is *not*
+    // called when a fragment's simply paged into view.
+    @Override
+    public void onResume() {
+        super.onResume();
+        setButtonText();
+    }
+
+    private void setButtonText()
+    {
         String buttonLabel = getString( R.string.test_button_label_fmt, getPhoneNumber());
-        button.setText( buttonLabel );
+        mTestButton.setText( buttonLabel );
     }
 
     private void runTest()
