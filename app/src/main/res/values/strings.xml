@@ -55,4 +55,6 @@
     <string name="tab_stats_title">Statistics</string>
 
     <string name="test_result_fmt">Send-to-self test succeeded, taking %.2f seconds.</string>
+
+    <string name="stats_button_refresh">Update</string>
 </resources>

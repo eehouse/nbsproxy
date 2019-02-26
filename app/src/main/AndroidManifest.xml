@@ -46,7 +46,5 @@
         <data android:host="*" />
       </intent-filter>
     </receiver>
-
   </application>
-
 </manifest>

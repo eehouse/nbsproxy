@@ -20,6 +20,7 @@
 package org.eehouse.android.nbsp.ui;
 
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -84,19 +85,19 @@ public class PermsFragment extends PageFragment {
 
     private void recheckCheck()
     {
-        boolean needPerms = !havePermissions();
+        boolean needPerms = !havePermissions(getActivity());
         mView.findViewById(R.id.need_perms)
             .setVisibility( needPerms ? View.VISIBLE : View.GONE );
         mView.findViewById(R.id.have_perms)
             .setVisibility( needPerms ? View.GONE : View.VISIBLE );
     }
 
-    private boolean havePermissions()
+    static boolean havePermissions( Activity activity )
     {
         boolean granted = true;
         for ( String perm : PERMISSIONS_REQUIRED ) {
             granted = granted &&
-                (ContextCompat.checkSelfPermission(getActivity(), perm )
+                (ContextCompat.checkSelfPermission( activity, perm )
                  == PackageManager.PERMISSION_GRANTED);
         }
         return granted;

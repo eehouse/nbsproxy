@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">NBSProxy</string>
+  <string name="app_name">NBSProxy</string>
+  <string name="msg_sent">msg_sent</string>
+  <string name="msg_delivered">msg_delivered</string>
 </resources>

@@ -19,5 +19,50 @@
 
 package org.eehouse.android.nbsp.ui;
 
+import android.view.View;
+import android.widget.TextView;
+
+import org.eehouse.android.nbsp.R;
+import org.eehouse.android.nbsp.StatsDB;
+
+import java.util.List;
+
 public class StatsFragment extends PageFragment {
+    private static final String TAG = StatsFragment.class.getSimpleName();
+
+    private TextView mTextView;
+
+    @Override
+    void onViewCreated( View view )
+    {
+        mTextView = (TextView)view.findViewById( R.id.stats_text );
+        view.findViewById( R.id.refresh_button )
+            .setOnClickListener( new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        refresh();
+                    }
+                } );
+        refresh();
+    }
+
+    private void refresh()
+    {
+        StatsDB.getRecords(getActivity(), new StatsDB.OnHaveData() {
+                @Override
+                public void onHaveData( final List<StatsDB.WeekRecord> data )
+                {
+                    getActivity().runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                StringBuilder sb = new StringBuilder();
+                                for ( StatsDB.WeekRecord rec : data ) {
+                                    sb.append( rec ).append('\n');
+                                }
+                                mTextView.setText( sb.toString() );
+                            }
+                        } );
+                }
+            } );
+    }
 }

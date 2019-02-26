@@ -56,8 +56,9 @@ public class TestFragment extends PageFragment {
     {
         final long startTime = System.currentTimeMillis();
         String phone = getPhoneNumber();
-        final byte[] data = new byte[32];
-        new Random().nextBytes(data);
+        Random random = new Random();
+        final byte[] data = new byte[24 + random.nextInt(24)]; // 24-48 bytes
+        random.nextBytes( data );
 
         NBSApp.setNBSCallback(new NBSProxy.OnReceived() {
                 @Override
@@ -83,9 +84,12 @@ public class TestFragment extends PageFragment {
 
     private String getPhoneNumber()
     {
-        TelephonyManager tMgr = (TelephonyManager)getActivity()
-            .getSystemService( Context.TELEPHONY_SERVICE );
-        String phoneNumber = tMgr.getLine1Number();
+        String phoneNumber = "???";
+        if ( PermsFragment.havePermissions( getActivity() ) ) {
+            TelephonyManager tMgr = (TelephonyManager)getActivity()
+                .getSystemService( Context.TELEPHONY_SERVICE );
+            phoneNumber = tMgr.getLine1Number();
+        }
         return phoneNumber;
     }
 }

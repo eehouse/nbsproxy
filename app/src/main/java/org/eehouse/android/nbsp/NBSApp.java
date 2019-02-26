@@ -19,8 +19,12 @@
 
 package org.eehouse.android.nbsp;
 
+import android.app.Activity;
 import android.app.Application;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.util.Log;
 
 public class NBSApp extends Application implements NBSProxy.OnReceived {
@@ -32,7 +36,34 @@ public class NBSApp extends Application implements NBSProxy.OnReceived {
     {
         super.onCreate();
 
+        // Required to support test send feature only
         NBSProxy.register( this );
+
+        // Broadcast receivers for results from NBS message sends
+        BroadcastReceiver br = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                boolean success = Activity.RESULT_OK == getResultCode();
+                String appID = intent.getStringExtra( "APPID" );
+                int datalen = intent.getIntExtra( "DATALEN", 0 );
+                if ( action.equals(getString(R.string.msg_sent)) ) {
+
+                } else if ( action.equals(getString(R.string.msg_delivered)) ) {
+                    if ( success ) {
+                        StatsDB.record( context, true, appID, datalen );
+                    }
+                }
+
+                // Log.d( TAG, "got intent with action:" + intent.getAction()
+                //        + "; success: " + success + "; len: " + len
+                //        + "; target: " + appID);
+            }
+        };
+
+        for ( int id : new int[] {R.string.msg_sent, R.string.msg_delivered}) {
+            registerReceiver( br, new IntentFilter( getString(id) ) );
+        }
     }
 
     @Override

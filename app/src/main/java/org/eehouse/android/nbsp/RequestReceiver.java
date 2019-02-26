@@ -62,8 +62,10 @@ public class RequestReceiver extends BroadcastReceiver {
                 data = baos.toByteArray();
             
                 SmsManager mgr = SmsManager.getDefault();
-                PendingIntent sent = null; // makeStatusIntent( MSG_SENT );
-                PendingIntent delivery = null; // makeStatusIntent( MSG_DELIVERED );
+                PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
+                                                       data.length, appID );
+                PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
+                                                           data.length, appID );
                 mgr.sendDataMessage( phone, null, port, data, sent, delivery );
                 Log.d( TAG, "sent " + data.length + " bytes to port "
                        + port + " on " + phone );
@@ -71,5 +73,15 @@ public class RequestReceiver extends BroadcastReceiver {
                 Log.e( TAG, "ioe: " + ioe );
             }
         }
+    }
+
+    private PendingIntent makeStatusIntent( Context context, int msgID,
+                                            int len, String appID )
+    {
+        Intent intent = new Intent( context.getString( msgID ) )
+            .putExtra( "APPID", appID )
+            .putExtra( "DATALEN", len );
+        return PendingIntent.getBroadcast( context, 0, intent,
+                                           PendingIntent.FLAG_UPDATE_CURRENT );
     }
 }
