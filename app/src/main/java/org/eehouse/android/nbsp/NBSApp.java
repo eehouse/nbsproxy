@@ -27,9 +27,13 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
 public class NBSApp extends Application implements NBSProxy.OnReceived {
     private static final String TAG = NBSApp.class.getSimpleName();
-    private static NBSProxy.OnReceived sProc;
+    private static Map<Integer, NBSProxy.OnReceived> sProcs = new HashMap<>();;
 
     @Override
     public void onCreate()
@@ -70,14 +74,19 @@ public class NBSApp extends Application implements NBSProxy.OnReceived {
     public void onDataReceived(Context context, String fromPhone,
                                byte[] data )
     {
-        NBSProxy.OnReceived proc = sProc;
+        NBSProxy.OnReceived proc = sProcs.remove( Arrays.hashCode(data) );
         if ( proc != null ) {
-            proc.onDataReceived( context, fromPhone, data );
+            try {
+                proc.onDataReceived( context, fromPhone, data );
+            } catch ( java.lang.IllegalStateException ise ) {
+                // This shows when fragment's been detached. Drop it
+            }
         }
     }
 
-    public static void setNBSCallback( NBSProxy.OnReceived proc )
+    public static void setNBSCallback( byte[] data, NBSProxy.OnReceived proc )
     {
-        sProc = proc;
+        int hash = Arrays.hashCode(data);
+        sProcs.put( hash, proc );
     }
 }

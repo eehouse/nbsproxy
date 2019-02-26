@@ -60,7 +60,7 @@ public class TestFragment extends PageFragment {
         final byte[] data = new byte[24 + random.nextInt(24)]; // 24-48 bytes
         random.nextBytes( data );
 
-        NBSApp.setNBSCallback(new NBSProxy.OnReceived() {
+        NBSApp.setNBSCallback(data, new NBSProxy.OnReceived() {
                 @Override
                 public void onDataReceived( Context context,
                                             String fromPhone,
