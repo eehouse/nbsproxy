@@ -74,10 +74,10 @@ public class NBSReceiver extends BroadcastReceiver {
             DataInputStream dis = new DataInputStream( bais );
             int code = dis.readInt();
             String appID = getAppIDFor( context, code );
-            int len = dis.available();
-            data = new byte[len];
-            dis.readFully( data );
-            String asStr = Base64.encodeToString( data, Base64.NO_WRAP );
+            final int len = dis.available();
+            byte[] clientData = new byte[len];
+            dis.readFully( clientData );
+            String asStr = Base64.encodeToString( clientData, Base64.NO_WRAP );
 
             Intent intent = new Intent()
                 .setAction( Intent.ACTION_SEND )
@@ -87,6 +87,8 @@ public class NBSReceiver extends BroadcastReceiver {
                 .setType( "text/nbsdata_rx" )
                 ;
             context.sendBroadcast( intent );
+
+            StatsDB.record( context, false, appID, len );
         } catch ( android.content.ActivityNotFoundException anfe ) {
             Log.e( TAG, "ActivityNotFoundException: " + anfe.getMessage() );
         } catch ( IOException ioe ) {

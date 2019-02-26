@@ -34,6 +34,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Random;
 
 public class RequestReceiver extends BroadcastReceiver {
     private static final String TAG = RequestReceiver.class.getSimpleName();
@@ -50,6 +51,7 @@ public class RequestReceiver extends BroadcastReceiver {
             int code = appID.hashCode();
             String text = intent.getStringExtra( Intent.EXTRA_TEXT );
             byte[] data = Base64.decode( text, Base64.NO_WRAP );
+            final int dataLen = data.length;
 
             // The data we send will prepend the hashcode of the target
             // appID. Yeah. conflict's possible. Sue me. Once it happens.
@@ -63,9 +65,9 @@ public class RequestReceiver extends BroadcastReceiver {
             
                 SmsManager mgr = SmsManager.getDefault();
                 PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
-                                                       data.length, appID );
+                                                       dataLen, appID );
                 PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
-                                                           data.length, appID );
+                                                           dataLen, appID );
                 mgr.sendDataMessage( phone, null, port, data, sent, delivery );
                 Log.d( TAG, "sent " + data.length + " bytes to port "
                        + port + " on " + phone );
@@ -75,13 +77,15 @@ public class RequestReceiver extends BroadcastReceiver {
         }
     }
 
+    private int mNextID = new Random().nextInt();
+
     private PendingIntent makeStatusIntent( Context context, int msgID,
                                             int len, String appID )
     {
         Intent intent = new Intent( context.getString( msgID ) )
             .putExtra( "APPID", appID )
             .putExtra( "DATALEN", len );
-        return PendingIntent.getBroadcast( context, 0, intent,
+        return PendingIntent.getBroadcast( context, ++mNextID, intent,
                                            PendingIntent.FLAG_UPDATE_CURRENT );
     }
 }

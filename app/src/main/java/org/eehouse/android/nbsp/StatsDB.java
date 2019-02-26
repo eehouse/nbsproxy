@@ -138,8 +138,7 @@ public class StatsDB {
     {
         WeekRecord rec = new WeekRecord( appID, isTX, datalen );
         Carrier entry = new Carrier( context, rec );
-        // DataEntry entry = new DataEntry( context, isTX, appID, datalen );
-        Log.d( TAG, "record(): enqueuing " + entry );
+        Log.d( TAG, "record(appID: " + appID + ", in: " + isTX + ", len: " + datalen + ")" );
         sQueue.add( entry );
         startThreadOnce();
     }
