@@ -43,7 +43,7 @@ import java.util.Arrays;
  *    <intent-filter>
  *      <action android:name="android.intent.action.SEND" />
  *      <category android:name="android.intent.category.DEFAULT" />
- *      <data android:mimeType="text/nbsdata" />
+ *      <data android:mimeType="text/nbsdata_rx" />
  *    </intent-filter>
  *  </receiver>
  *
@@ -94,8 +94,9 @@ public class NBSProxy extends BroadcastReceiver {
     public static void send( Context context, String phone,
                              String appID, byte[] data )
     {
-        Log.d( TAG, "got data of len " + data.length
-               + " with hash " + Arrays.hashCode(data) );
+        Log.d( TAG, "given data of len " + data.length
+               + " with hash " + Arrays.hashCode(data)
+               + " for appid " + appID );
         String asStr = Base64.encodeToString( data, Base64.NO_WRAP );
 
         Intent intent = new Intent()
@@ -105,7 +106,7 @@ public class NBSProxy extends BroadcastReceiver {
             .putExtra( "APPID", appID )
             .putExtra( "HASH", Arrays.hashCode(data) )
             .setPackage( "org.eehouse.android.nbsp" )
-            .setType( "text/nbsdata" );
+            .setType( "text/nbsdata_tx" );
         context.sendBroadcast( intent );
         Log.d( TAG, "launching intent at: org.eehouse.android.nbsp" );
     }
@@ -117,7 +118,7 @@ public class NBSProxy extends BroadcastReceiver {
         Log.d( TAG, "onReceive()" );
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
-             && "text/nbsdata".equals( intent.getType() ) ) {
+             && "text/nbsdata_rx".equals( intent.getType() ) ) {
             String text = intent.getStringExtra( Intent.EXTRA_TEXT );
             String phone = intent.getStringExtra( "PHONE" );
             if ( text != null && phone != null ) {

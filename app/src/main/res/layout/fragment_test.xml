@@ -11,7 +11,12 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:textAppearance="?android:attr/textAppearanceMedium"
-      android:text="Will allow you to send a message to yourself to test; might require additional permission to look up your phone number."
+      android:text="@string/test_expl"
       />
+
+  <Button android:id="@+id/test_button"
+          android:layout_width="fill_parent"
+          android:layout_height="wrap_content"
+          />
 
 </LinearLayout>

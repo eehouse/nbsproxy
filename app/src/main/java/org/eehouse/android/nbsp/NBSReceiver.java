@@ -84,7 +84,7 @@ public class NBSReceiver extends BroadcastReceiver {
                 .putExtra( Intent.EXTRA_TEXT, asStr )
                 .putExtra( "PHONE", phone )
                 .setPackage( appID )
-                .setType( "text/nbsdata" )
+                .setType( "text/nbsdata_rx" )
                 ;
             context.sendBroadcast( intent );
         } catch ( android.content.ActivityNotFoundException anfe ) {
@@ -114,7 +114,7 @@ public class NBSReceiver extends BroadcastReceiver {
                     break;
                 }
             }
-            Log.d( TAG, "DONE looking up appIDs" );
+            Log.d( TAG, "DONE looking up appIDs; got " + result );
         }
         return result;
     }

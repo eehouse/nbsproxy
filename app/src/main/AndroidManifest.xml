@@ -7,6 +7,7 @@
   <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
   <application
+      android:name=".NBSApp"
       android:allowBackup="true"
       android:icon="@mipmap/ic_launcher"
       android:label="@string/app_name"
@@ -24,7 +25,16 @@
       <intent-filter>
         <action android:name="android.intent.action.SEND" />
         <category android:name="android.intent.category.DEFAULT" />
-        <data android:mimeType="text/nbsdata" />
+        <data android:mimeType="text/nbsdata_tx" />
+      </intent-filter>
+    </receiver>
+
+    <!-- Provided by app so it can set test messages to itself -->
+    <receiver android:name="org.eehouse.android.nbsp.NBSProxy">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="text/nbsdata_rx" />
       </intent-filter>
     </receiver>
 

@@ -19,5 +19,73 @@
 
 package org.eehouse.android.nbsp.ui;
 
+import android.content.Context;
+import android.support.v7.app.AlertDialog;
+import android.telephony.TelephonyManager;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+
+import java.util.Arrays;
+import java.util.Random;
+
+import org.eehouse.android.nbsp.BuildConfig;
+import org.eehouse.android.nbsp.NBSApp;
+import org.eehouse.android.nbsp.NBSProxy;
+import org.eehouse.android.nbsp.R;
+
 public class TestFragment extends PageFragment {
+    private static final String TAG = TestFragment.class.getSimpleName();
+    @Override
+    void onViewCreated( View view )
+    {
+        Button button = (Button)view.findViewById( R.id.test_button );
+        button.findViewById( R.id.test_button )
+            .setOnClickListener( new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        runTest();
+                    }
+                } );
+
+        String buttonLabel = getString( R.string.test_button_label_fmt, getPhoneNumber());
+        button.setText( buttonLabel );
+    }
+
+    private void runTest()
+    {
+        final long startTime = System.currentTimeMillis();
+        String phone = getPhoneNumber();
+        final byte[] data = new byte[32];
+        new Random().nextBytes(data);
+
+        NBSApp.setNBSCallback(new NBSProxy.OnReceived() {
+                @Override
+                public void onDataReceived( Context context,
+                                            String fromPhone,
+                                            byte[] dataIn )
+                {
+                    if ( Arrays.equals( data, dataIn ) ) {
+                        long elapsedMS = System.currentTimeMillis() - startTime;
+                        String msg = getString( R.string.test_result_fmt,
+                                                ((float)elapsedMS)/1000 );
+
+                        new AlertDialog.Builder(getActivity())
+                            .setMessage(msg)
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show();
+                    }
+                }
+            } );
+
+        NBSProxy.send( getActivity(), phone, BuildConfig.APPLICATION_ID, data );
+    }
+
+    private String getPhoneNumber()
+    {
+        TelephonyManager tMgr = (TelephonyManager)getActivity()
+            .getSystemService( Context.TELEPHONY_SERVICE );
+        String phoneNumber = tMgr.getLine1Number();
+        return phoneNumber;
+    }
 }

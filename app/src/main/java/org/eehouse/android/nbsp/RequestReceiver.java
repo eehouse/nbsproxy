@@ -43,7 +43,7 @@ public class RequestReceiver extends BroadcastReceiver {
     {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
-             && "text/nbsdata".equals( intent.getType() ) ) {
+             && "text/nbsdata_tx".equals( intent.getType() ) ) {
             short port = Short.valueOf( context.getString( R.string.nbs_port ) );
             String phone = intent.getStringExtra( "PHONE" );
             String appID = intent.getStringExtra( "APPID" );
