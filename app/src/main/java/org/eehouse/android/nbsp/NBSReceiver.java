@@ -35,29 +35,50 @@ import java.util.Map;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class NBSReceiver extends BroadcastReceiver {
     private static final String TAG = NBSReceiver.class.getSimpleName();
+    private static final Pattern sPortPat = Pattern.compile("^sms://localhost:(\\d+)$");
 
     @Override
     public void onReceive( Context context, Intent intent )
     {
         String action = intent.getAction();
         if ( action.equals("android.intent.action.DATA_SMS_RECEIVED") ) {
-            Bundle bundle = intent.getExtras();
-            if ( null != bundle ) {
-                Object[] pdus = (Object[])bundle.get( "pdus" );
-                SmsMessage[] smses = new SmsMessage[pdus.length];
 
-                for ( int ii = 0; ii < pdus.length; ++ii ) {
-                    SmsMessage sms = SmsMessage.createFromPdu((byte[])pdus[ii]);
-                    if ( null != sms ) {
-                        try {
-                            String phone = sms.getOriginatingAddress();
-                            byte[] body = sms.getUserData();
-                            forward( context, phone, body );
-                        } catch ( NullPointerException npe ) {
-                            Log.e( TAG, "npe: " + npe.getMessage() );
+            // I'm not confident that datastring will always have the same
+            // format. But if it does specify a port, and it's the wrong one,
+            // we can use that to abort early.
+            boolean portMismatch = false;
+            Matcher matcher = sPortPat.matcher( intent.getDataString() );
+            if ( matcher.find() ) {
+                short port = Short.valueOf( matcher.group(1) );
+                short myPort = getConfiguredPort( context );
+                portMismatch = port != myPort;
+                if ( portMismatch ) {
+                    Log.i( TAG, "portMismatch: received on " + port
+                           + " but expect " + myPort );
+                }
+            }
+
+            if ( !portMismatch ) {
+                Bundle bundle = intent.getExtras();
+                if ( null != bundle ) {
+                    Object[] pdus = (Object[])bundle.get( "pdus" );
+                    SmsMessage[] smses = new SmsMessage[pdus.length];
+
+                    for ( int ii = 0; ii < pdus.length; ++ii ) {
+                        SmsMessage sms = SmsMessage.createFromPdu((byte[])pdus[ii]);
+                        if ( null != sms ) {
+                            try {
+                                String phone = sms.getOriginatingAddress();
+                                byte[] body = sms.getUserData();
+                                forward( context, phone, body );
+                            } catch ( NullPointerException npe ) {
+                                Log.e( TAG, "npe: " + npe.getMessage() );
+                            }
                         }
                     }
                 }
@@ -67,28 +88,30 @@ public class NBSReceiver extends BroadcastReceiver {
 
     private void forward( Context context, String phone, byte[] data )
     {
-        Log.d( TAG, "got " + data.length + " bytes from " + phone );
-
+        Log.i( TAG, "got " + data.length + " bytes from " + phone );
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream( data );
             DataInputStream dis = new DataInputStream( bais );
-            int code = dis.readInt();
-            String appID = getAppIDFor( context, code );
-            final int len = dis.available();
-            byte[] clientData = new byte[len];
-            dis.readFully( clientData );
-            String asStr = Base64.encodeToString( clientData, Base64.NO_WRAP );
+            String appID = getAppIDFor( context, dis.readInt() );
+            if ( appID == null ) {
+                Log.e( TAG, "format is wrong, or no app installed for message" );
+            } else {
+                final int len = dis.available();
+                byte[] clientData = new byte[len];
+                dis.readFully( clientData );
+                String asStr = Base64.encodeToString( clientData, Base64.NO_WRAP );
 
-            Intent intent = new Intent()
-                .setAction( Intent.ACTION_SEND )
-                .putExtra( Intent.EXTRA_TEXT, asStr )
-                .putExtra( "PHONE", phone )
-                .setPackage( appID )
-                .setType( "text/nbsdata_rx" )
-                ;
-            context.sendBroadcast( intent );
+                Intent intent = new Intent()
+                    .setAction( Intent.ACTION_SEND )
+                    .putExtra( Intent.EXTRA_TEXT, asStr )
+                    .putExtra( "PHONE", phone )
+                    .setPackage( appID )
+                    .setType( "text/nbsdata_rx" )
+                    ;
+                context.sendBroadcast( intent );
 
-            StatsDB.record( context, false, appID, len );
+                StatsDB.record( context, false, appID, len );
+            }
         } catch ( android.content.ActivityNotFoundException anfe ) {
             Log.e( TAG, "ActivityNotFoundException: " + anfe.getMessage() );
         } catch ( IOException ioe ) {
@@ -119,5 +142,14 @@ public class NBSReceiver extends BroadcastReceiver {
             Log.d( TAG, "DONE looking up appIDs; got " + result );
         }
         return result;
+    }
+
+    private static Short sPort;
+    private short getConfiguredPort( Context context )
+    {
+        if ( sPort == null ) {
+            sPort = Short.valueOf(context.getString( R.string.nbs_port ) );
+        }
+        return sPort;
     }
 }
