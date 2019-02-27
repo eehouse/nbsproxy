@@ -31,8 +31,8 @@ import java.util.Random;
 
 import org.eehouse.android.nbsp.BuildConfig;
 import org.eehouse.android.nbsp.NBSApp;
-import org.eehouse.android.nbsp.NBSProxy;
 import org.eehouse.android.nbsp.R;
+import org.eehouse.android.nbsplib.NBSProxy;
 
 public class TestFragment extends PageFragment {
     private static final String TAG = TestFragment.class.getSimpleName();

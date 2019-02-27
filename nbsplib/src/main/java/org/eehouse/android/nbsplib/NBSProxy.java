@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package org.eehouse.android.nbsp;
+package org.eehouse.android.nbsplib;
 
 import android.app.Application;
 import android.content.BroadcastReceiver;
@@ -27,6 +27,8 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
+
+import junit.framework.Assert;
 
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
@@ -117,6 +119,7 @@ public class NBSProxy extends BroadcastReceiver {
      */
     public static boolean isInstalled( Context context )
     {
+        Assert.fail();          // Need to figure out how to get the app's package name
         boolean installed = true;
         String name = NBSProxy.class.getPackage().getName();
         PackageManager pm = context.getPackageManager();

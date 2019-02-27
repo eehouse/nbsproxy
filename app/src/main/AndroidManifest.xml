@@ -29,15 +29,6 @@
       </intent-filter>
     </receiver>
 
-    <!-- Provided by app so it can set test messages to itself -->
-    <receiver android:name="org.eehouse.android.nbsp.NBSProxy">
-      <intent-filter>
-        <action android:name="android.intent.action.SEND" />
-        <category android:name="android.intent.category.DEFAULT" />
-        <data android:mimeType="text/nbsdata_rx" />
-      </intent-filter>
-    </receiver>
-
     <receiver android:name="NBSReceiver" >
       <intent-filter>
         <action android:name="android.intent.action.DATA_SMS_RECEIVED" />

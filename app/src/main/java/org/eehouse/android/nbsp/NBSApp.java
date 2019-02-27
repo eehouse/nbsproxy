@@ -27,6 +27,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 
+import org.eehouse.android.nbsplib.NBSProxy;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
