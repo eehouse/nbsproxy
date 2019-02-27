@@ -23,6 +23,7 @@ import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
@@ -111,6 +112,22 @@ public class NBSProxy extends BroadcastReceiver {
         Log.d( TAG, "launching intent at: org.eehouse.android.nbsp" );
     }
 
+    /**
+     * Test where the actual app is installed on the device
+     */
+    public static boolean isInstalled( Context context )
+    {
+        boolean installed = true;
+        String name = NBSProxy.class.getPackage().getName();
+        PackageManager pm = context.getPackageManager();
+        try {
+            pm.getPackageInfo( name, 0 );
+        } catch (PackageManager.NameNotFoundException e) {
+            installed = false;
+        }
+        Log.d( TAG, "isInstalled() => " + installed );
+        return installed;
+    }
 
     @Override
     public void onReceive( Context context, Intent intent )
