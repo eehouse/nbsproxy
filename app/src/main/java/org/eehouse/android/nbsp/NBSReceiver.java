@@ -50,22 +50,20 @@ public class NBSReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if ( action.equals("android.intent.action.DATA_SMS_RECEIVED") ) {
             short port = getPort( context, intent );
-            if ( port == getConfiguredPort(context) ) {
-                Bundle bundle = intent.getExtras();
-                if ( null != bundle ) {
-                    Object[] pdus = (Object[])bundle.get( "pdus" );
-                    SmsMessage[] smses = new SmsMessage[pdus.length];
+            Bundle bundle = intent.getExtras();
+            if ( null != bundle ) {
+                Object[] pdus = (Object[])bundle.get( "pdus" );
+                SmsMessage[] smses = new SmsMessage[pdus.length];
 
-                    for ( int ii = 0; ii < pdus.length; ++ii ) {
-                        SmsMessage sms = SmsMessage.createFromPdu((byte[])pdus[ii]);
-                        if ( null != sms ) {
-                            try {
-                                String phone = sms.getOriginatingAddress();
-                                byte[] body = sms.getUserData();
-                                forward( context, port, phone, body );
-                            } catch ( NullPointerException npe ) {
-                                Log.e( TAG, "npe: " + npe.getMessage() );
-                            }
+                for ( int ii = 0; ii < pdus.length; ++ii ) {
+                    SmsMessage sms = SmsMessage.createFromPdu((byte[])pdus[ii]);
+                    if ( null != sms ) {
+                        try {
+                            String phone = sms.getOriginatingAddress();
+                            byte[] body = sms.getUserData();
+                            forward( context, port, phone, body );
+                        } catch ( NullPointerException npe ) {
+                            Log.e( TAG, "npe: " + npe.getMessage() );
                         }
                     }
                 }
@@ -80,10 +78,6 @@ public class NBSReceiver extends BroadcastReceiver {
         if ( matcher.find() ) {
             result = Short.valueOf( matcher.group(1) );
             short expectPort = getConfiguredPort( context );
-            if ( expectPort != result ) {
-                Log.i( TAG, "getPort(): received on " + result
-                       + " but expect " + expectPort );
-            }
         }
         return result;
     }
