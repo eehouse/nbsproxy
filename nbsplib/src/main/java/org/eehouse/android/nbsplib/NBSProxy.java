@@ -33,33 +33,45 @@ import junit.framework.Assert;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
+/* Rethinking things: this needs to work in the situation where one of two
+ * communicating devices has it installed and the other doesn't.
+ *
+ * So forget about transmitting appID. Every manifest-registered receiver gets
+ * every message anyway, so we'll just let interested apps register by port
+ * and broadcast every message to all of them. No runtime lookup of apps: if
+ * you don't register, you don't get awakened because I don't know you have a
+ * Receiver registered. (I'm not going to try to parse or ping all the
+ * installed apps!)
+ *
+ * So data's unmodified. Gets sent to the other device. If the proxy app's
+ * there it'll get it and broadcast. As will any apps doing NBS themselves.
+ */
+
 /**
- * This is the public api for the NBSProxy app. It (i.e. this file) is meant
- * to be included in a client app's source tree, after which the client just
- * calls NBSProxy.register() from Application.onCreate() and NBSProxy.send()
- * from anywhere
- *
- * Note that the client must also provide an entrypoint for incoming messages
- * from NBSProxy thus (literally):
- *
- *  <receiver android:name="org.eehouse.android.nbsp.NBSProxy">
- *    <intent-filter>
- *      <action android:name="android.intent.action.SEND" />
- *      <category android:name="android.intent.category.DEFAULT" />
- *      <data android:mimeType="text/nbsdata_rx" />
- *    </intent-filter>
- *  </receiver>
- *
- * With the receiver in place, incoming NBS messages are delivered to the
- * callback passed to register().
+ * This is the public api for the NBSProxy app. Beyond including the library
+ * that provides this file, the client just calls NBSProxy.register() from
+ * Application.onCreate() and NBSProxy.send() from anywhere.
  */
 
 public class NBSProxy extends BroadcastReceiver {
     private static final String TAG = NBSProxy.class.getSimpleName();
     private static WeakReference<OnReceived> sProcRef;
 
+    // Keys for passing stuff around in intents.
+    public static final String EXTRA_PHONE = TAG + ".phone";
+    public static final String EXTRA_PORT = TAG + ".port";
+    public static final String EXTRA_APPID = TAG + ".appid";
+    public static final String EXTRA_DATALEN = TAG + ".len";
+    public static final String EXTRA_CMD = TAG + ".cmd";
+
+    // values for EXTRA_CMD
+    public static enum CTRL {
+        REG,
+        SEND,
+    }
+
     public interface OnReceived {
-        void onDataReceived( Context context, String fromPhone, byte[] data );
+        void onDataReceived( short port, String fromPhone, byte[] data );
     }
 
     /**
@@ -74,17 +86,19 @@ public class NBSProxy extends BroadcastReceiver {
      * turn lets me store it in a WeakReference that won't cause any leaks.
      * You don't need to clear it later by passing null: gc's magic.
      */
-    public static void register( OnReceived proc )
+    public static void register( short port, String appID, OnReceived proc )
     {
-        Log.d( TAG, "register(" + proc + ")" );
+        Log.d( TAG, "register(" + proc + ") for appID " + appID );
 
         // Caller can't just call <code>register( new OnReceived(){} )</code>
         // or with no other reference to the proc it'll get gc'd. So force
         // them to pass an Application that implements OnReceived. If other's
         // use this and care, I'll address.
         assert( proc instanceof Application );
+        Context context = (Context)proc; // as long as we're doing the assert :-)
 
         sProcRef = new WeakReference<>( proc );
+        sendRegIntent( context, port, appID );
     }
 
     /**
@@ -95,21 +109,18 @@ public class NBSProxy extends BroadcastReceiver {
      * @param data binary data to be transmitted
     */
     public static void send( Context context, String phone,
-                             String appID, byte[] data )
+                             short port, byte[] data )
     {
         Log.d( TAG, "given data of len " + data.length
-               + " with hash " + Arrays.hashCode(data)
-               + " for appid " + appID );
+               + " to send on port " + port );
         String asStr = Base64.encodeToString( data, Base64.NO_WRAP );
 
-        Intent intent = new Intent()
-            .setAction( Intent.ACTION_SEND )
+        Intent intent = getBaseIntent( CTRL.SEND )
             .putExtra( Intent.EXTRA_TEXT, asStr )
-            .putExtra( "PHONE", phone )
-            .putExtra( "APPID", appID )
-            .putExtra( "HASH", Arrays.hashCode(data) )
-            .setPackage( "org.eehouse.android.nbsp" )
-            .setType( "text/nbsdata_tx" );
+            .putExtra( EXTRA_PHONE, phone )
+            .putExtra( EXTRA_APPID, BuildConfig.APPLICATION_ID )
+            .putExtra( EXTRA_PORT, port )
+            ;
         context.sendBroadcast( intent );
         Log.d( TAG, "launching intent at: org.eehouse.android.nbsp" );
     }
@@ -139,23 +150,46 @@ public class NBSProxy extends BroadcastReceiver {
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_rx".equals( intent.getType() ) ) {
             String text = intent.getStringExtra( Intent.EXTRA_TEXT );
-            String phone = intent.getStringExtra( "PHONE" );
-            if ( text != null && phone != null ) {
+            String phone = intent.getStringExtra( EXTRA_PHONE );
+            short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
+            if ( text == null ) {
+                Log.e( TAG, "onReceive(): null text" );
+            } else if ( phone == null ) {
+                Log.e( TAG, "onReceive(): null phone" );
+            } else if ( port == -1 ) {
+                Log.e( TAG, "onReceive(): missing port" );
+            } else {
                 byte[] data = Base64.decode( text, Base64.NO_WRAP );
-                boolean sent = false;
                 if ( sProcRef != null ) {
                     OnReceived proc = sProcRef.get();
                     if ( proc != null ) {
-                        Log.d( TAG, "passing " + data.length + " bytes from "
+                        Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
                                + phone );
-                        proc.onDataReceived( context, phone, data );
-                        sent = true;
+                        proc.onDataReceived( port, phone, data );
                     }
-                }
-                if ( !sent ) {
-                    Log.e( TAG, "no callback found; message dropped" );
                 }
             }
         }
+    }
+
+    private static void sendRegIntent( Context context, short port, String appID )
+    {
+        Intent intent = getBaseIntent( CTRL.REG )
+            .putExtra( EXTRA_PORT, port )
+            .putExtra( EXTRA_APPID, appID )
+            ;
+        Log.d( TAG, "sendRegIntent() sending " + intent );
+        context.sendBroadcast( intent );
+    }
+
+    private static Intent getBaseIntent( CTRL cmd )
+    {
+        Intent intent = new Intent()
+            .putExtra( EXTRA_CMD, cmd.ordinal() )
+            .setAction( Intent.ACTION_SEND )
+            .setType( "text/nbsdata_tx" )
+            .setPackage( BuildConfig.NBSPROXY_APPLICATION_ID )
+            ;
+        return intent;
     }
 }

@@ -7,3 +7,5 @@
 /captures
 .externalNativeBuild
 *~
+/TAGS
+/nohup.out

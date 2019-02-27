@@ -30,7 +30,7 @@ import java.util.Arrays;
 import java.util.Random;
 
 import org.eehouse.android.nbsp.BuildConfig;
-import org.eehouse.android.nbsp.NBSApp;
+import org.eehouse.android.nbsp.NBSPApp;
 import org.eehouse.android.nbsp.R;
 import org.eehouse.android.nbsplib.NBSProxy;
 
@@ -77,9 +77,9 @@ public class TestFragment extends PageFragment {
         final byte[] data = new byte[24 + random.nextInt(24)]; // 24-48 bytes
         random.nextBytes( data );
 
-        NBSApp.setNBSCallback(data, new NBSProxy.OnReceived() {
+        NBSPApp.setNBSCallback(data, new NBSProxy.OnReceived() {
                 @Override
-                public void onDataReceived( Context context,
+                public void onDataReceived( short port,
                                             String fromPhone,
                                             byte[] dataIn )
                 {
@@ -96,7 +96,8 @@ public class TestFragment extends PageFragment {
                 }
             } );
 
-        NBSProxy.send( getActivity(), phone, BuildConfig.APPLICATION_ID, data );
+        short port = Short.valueOf( getString( R.string.nbsp_port ) );
+        NBSProxy.send( getActivity(), phone, port, data );
     }
 
     private String getPhoneNumber()

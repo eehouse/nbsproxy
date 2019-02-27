@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
+import org.eehouse.android.nbsplib.NBSProxy;
+
 public class RequestReceiver extends BroadcastReceiver {
     private static final String TAG = RequestReceiver.class.getSimpleName();
 
@@ -45,47 +47,57 @@ public class RequestReceiver extends BroadcastReceiver {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_tx".equals( intent.getType() ) ) {
-            short port = Short.valueOf( context.getString( R.string.nbs_port ) );
-            String phone = intent.getStringExtra( "PHONE" );
-            String appID = intent.getStringExtra( "APPID" );
-            int code = appID.hashCode();
-            String text = intent.getStringExtra( Intent.EXTRA_TEXT );
-            byte[] data = Base64.decode( text, Base64.NO_WRAP );
-            final int dataLen = data.length;
-
-            // The data we send will prepend the hashcode of the target
-            // appID. Yeah. conflict's possible. Sue me. Once it happens.
-            try {
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                DataOutputStream dos = new DataOutputStream( baos );
-                dos.writeInt( code );
-                dos.write( data, 0, data.length );
-                dos.flush();
-                data = baos.toByteArray();
-            
-                SmsManager mgr = SmsManager.getDefault();
-                PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
-                                                       dataLen, appID );
-                PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
-                                                           dataLen, appID );
-                mgr.sendDataMessage( phone, null, port, data, sent, delivery );
-                Log.d( TAG, "sent " + data.length + " bytes to port "
-                       + port + " on " + phone );
-            } catch ( IOException ioe ) {
-                Log.e( TAG, "ioe: " + ioe );
+            NBSProxy.CTRL cmd = NBSProxy.CTRL
+                .values()[intent.getIntExtra( NBSProxy.EXTRA_CMD, -1 ) ];
+            Log.d( TAG, "onReceive() got cmd: " + cmd );
+            switch ( cmd ) {
+            case REG:
+                handleReg( context, intent );
+                break;
+            case SEND:
+                handleSend( context, intent );
+                break;
             }
         }
+    }
+
+    private void handleReg( Context context, Intent intent )
+    {
+        short port = intent.getShortExtra( NBSProxy.EXTRA_PORT, (short)-1 );
+        String appID = intent.getStringExtra( NBSProxy.EXTRA_APPID );
+        Log.d( TAG, "handleReg(" + port + ", " + appID + ")");
+        PortReg.register( context, port, appID );
+    }
+    
+    private void handleSend( Context context, Intent intent )
+    {
+        short port = intent.getShortExtra( NBSProxy.EXTRA_PORT, (short)-1 );
+        String phone = intent.getStringExtra( NBSProxy.EXTRA_PHONE );
+        String text = intent.getStringExtra( Intent.EXTRA_TEXT );
+        byte[] data = Base64.decode( text, Base64.NO_WRAP );
+        final int dataLen = data.length;
+
+        SmsManager mgr = SmsManager.getDefault();
+        PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
+                                               dataLen, port );
+        PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
+                                                   dataLen, port );
+        mgr.sendDataMessage( phone, null, port, data, sent, delivery );
+        Log.d( TAG, "sent " + data.length + " bytes to port "
+               + port + " on " + phone );
+
+        StatsDB.record( context, true, port, data.length );
     }
 
     private int mNextID = new Random().nextInt();
 
     private PendingIntent makeStatusIntent( Context context, int msgID,
-                                            int len, String appID )
+                                            int len, short port )
     {
         Intent intent = new Intent( context.getString( msgID ) )
-            .putExtra( "APPID", appID )
-            .putExtra( "DATALEN", len );
-        return PendingIntent.getBroadcast( context, ++mNextID, intent,
-                                           PendingIntent.FLAG_UPDATE_CURRENT );
+            .putExtra( NBSProxy.EXTRA_PORT, port )
+            .putExtra( NBSProxy.EXTRA_DATALEN, len );
+        return PendingIntent.getBroadcast( context, ++mNextID, intent, 0 );
+                                           // PendingIntent.FLAG_UPDATE_CURRENT );
     }
 }

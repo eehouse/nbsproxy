@@ -34,8 +34,8 @@ import java.util.HashMap;
 import java.util.Map;
 import junit.framework.Assert;
 
-public class NBSApp extends Application implements NBSProxy.OnReceived {
-    private static final String TAG = NBSApp.class.getSimpleName();
+public class NBSPApp extends Application implements NBSProxy.OnReceived {
+    private static final String TAG = NBSPApp.class.getSimpleName();
     private static Map<Integer, NBSProxy.OnReceived> sProcs = new HashMap<>();;
 
     @Override
@@ -45,27 +45,18 @@ public class NBSApp extends Application implements NBSProxy.OnReceived {
 
         // Required to support test send feature only
         Assert.assertTrue( NBSProxy.isInstalled(this) );
-        NBSProxy.register( this );
+        short port = Short.valueOf( getString( R.string.nbsp_port ) );
+        NBSProxy.register( port, BuildConfig.APPLICATION_ID, this );
 
-        // Broadcast receivers for results from NBS message sends
+        // Broadcast receivers for results from NBS message sends. Right now
+        // we just log what happened.
         BroadcastReceiver br = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 boolean success = Activity.RESULT_OK == getResultCode();
-                String appID = intent.getStringExtra( "APPID" );
-                int datalen = intent.getIntExtra( "DATALEN", 0 );
-                if ( action.equals(getString(R.string.msg_sent)) ) {
-
-                } else if ( action.equals(getString(R.string.msg_delivered)) ) {
-                    if ( success ) {
-                        StatsDB.record( context, true, appID, datalen );
-                    }
-                }
-
-                // Log.d( TAG, "got intent with action:" + intent.getAction()
-                //        + "; success: " + success + "; len: " + len
-                //        + "; target: " + appID);
+                Log.d( TAG, "notified of nbs send progress: action: " + action
+                       + "; success: " + success );
             }
         };
 
@@ -75,13 +66,12 @@ public class NBSApp extends Application implements NBSProxy.OnReceived {
     }
 
     @Override
-    public void onDataReceived(Context context, String fromPhone,
-                               byte[] data )
+    public void onDataReceived( short port, String fromPhone, byte[] data )
     {
         NBSProxy.OnReceived proc = sProcs.remove( Arrays.hashCode(data) );
         if ( proc != null ) {
             try {
-                proc.onDataReceived( context, fromPhone, data );
+                proc.onDataReceived( port, fromPhone, data );
             } catch ( java.lang.IllegalStateException ise ) {
                 // This shows when fragment's been detached. Drop it
             }

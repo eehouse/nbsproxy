@@ -19,11 +19,14 @@
 
 package org.eehouse.android.nbsp.ui;
 
+import android.app.Activity;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
 
 import org.eehouse.android.nbsp.R;
 import org.eehouse.android.nbsp.StatsDB;
+import org.eehouse.android.nbsp.PortReg;
 
 import java.util.List;
 
@@ -48,21 +51,52 @@ public class StatsFragment extends PageFragment {
 
     private void refresh()
     {
-        StatsDB.getRecords(getActivity(), new StatsDB.OnHaveData() {
+        StatsDB.get(getActivity(), new StatsDB.OnHaveWeekRecords() {
                 @Override
-                public void onHaveData( final List<StatsDB.WeekRecord> data )
+                public void onHaveData( List<StatsDB.WeekRecord> data )
                 {
-                    getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                StringBuilder sb = new StringBuilder();
-                                for ( StatsDB.WeekRecord rec : data ) {
-                                    sb.append( rec ).append('\n');
-                                }
-                                mTextView.setText( sb.toString() );
-                            }
-                        } );
+                    // Let's run this in its own thread. Not sure how long all
+                    // these callbacks will take.
+                    new RefresherThread( data ).start();
                 }
             } );
+    }
+
+    private class RefresherThread extends Thread {
+        private List<StatsDB.WeekRecord> mData;
+
+        RefresherThread( List<StatsDB.WeekRecord> data ) { mData = data; }
+
+        @Override
+        public void run() {
+            final Activity activity = getActivity();
+            final StringBuilder sb = new StringBuilder();
+
+            for ( final StatsDB.WeekRecord rec : mData ) {
+                short port = rec.getPort();
+                PortReg.lookup( activity, port,
+                                new PortReg.OnHaveAppIDs() {
+                                    @Override
+                                    public void haveAppIDs( String[] appIDs )
+                                    {
+                                        if ( appIDs == null || appIDs.length == 0 ) {
+                                            appIDs = new String[] {"<unknown>"};
+                                        }
+                                        sb.append( "appIDs: [")
+                                            .append( TextUtils.join(",",appIDs))
+                                            .append("]: " )
+                                            .append( rec )
+                                            .append('\n');
+                                    }
+                                } );
+            }
+
+            activity.runOnUiThread( new Runnable() {
+                    @Override
+                    public void run() {
+                        mTextView.setText( sb.toString() );
+                    }
+                } );
+        } // run
     }
 }

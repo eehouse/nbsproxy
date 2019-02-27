@@ -12,7 +12,7 @@ android {
     }
     buildTypes {
 		all {
-			resValue "string", "nbs_port", "4369"
+			resValue "string", "nbsp_port", "4369"
 		}
         release {
             minifyEnabled false

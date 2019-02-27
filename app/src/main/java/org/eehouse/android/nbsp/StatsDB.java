@@ -64,18 +64,18 @@ public class StatsDB {
      * it represents all time prior to numbered weeks.
      */
     public static class WeekRecord implements Serializable {
-        String appID;
+        short port;
         long bytesTX;
         int countTX;
         long bytesRX;
         int countRX;
         long week;           // weeks since the epoch
 
-        WeekRecord( String appID ) { this.appID = appID; }
+        WeekRecord( short port ) { this.port = port; }
 
-        WeekRecord( String appID, boolean isTX, int len )
+        WeekRecord( short port, boolean isTX, int len )
         {
-            this( appID );
+            this( port );
             if (isTX) {
                 countTX = 1;
                 bytesTX = len;
@@ -90,18 +90,20 @@ public class StatsDB {
         public String toString()
         {
             return String
-                .format( "appid: %s, count in: %d, bytes in: %d, count out: %d, bytes out: %d",
-                         appID, countRX, bytesRX, countTX, bytesTX );
+                .format( "port: %d, count in: %d, bytes in: %d, count out: %d, bytes out: %d",
+                         port, countRX, bytesRX, countTX, bytesTX );
         }
+
+        public short getPort() { return port; }
 
         /**
          * Produce a key that'll likely not conflict with other uses of a
-         * key->value table AND be sortable and express week/appid uniqueness
+         * key->value table AND be sortable and express week/port uniqueness
          */
         String getKey()
         {
             Assert.assertTrue( week > 0 );
-            return String.format( "WeekRecord:%d:%s", week, appID );
+            return String.format( "WeekRecord:%d:%d", week, port );
         }
 
         static String keyPattern()
@@ -111,7 +113,7 @@ public class StatsDB {
 
         void append( WeekRecord other )
         {
-            Assert.assertTrue( appID.equals(other.appID) );
+            Assert.assertTrue( port == other.port );
             Assert.assertTrue( week == 0 || week == other.week );
             bytesTX += other.bytesTX;
             countTX += other.countTX;
@@ -123,8 +125,22 @@ public class StatsDB {
     }
 
     private static class DataRequest {
-        OnHaveData proc;
-        DataRequest( OnHaveData proc ) { this.proc = proc; }
+        OnHaveWeekRecords proc;
+        DataRequest( OnHaveWeekRecords proc ) { this.proc = proc; }
+    }
+
+    private static class StringRequest {
+        OnHaveString proc;
+        String key;
+        StringRequest( String key, OnHaveString proc ) {
+            this.proc = proc; this.key = key;
+        }
+    }
+
+    private static class KVPair {
+        String key;
+        String val;
+        KVPair( String key, String val ) { this.key = key; this.val = val; }
     }
 
     // Whatever. Just a hack to avoid context in Serializable
@@ -134,20 +150,82 @@ public class StatsDB {
         Carrier( Context context, Object obj ) { this.context = context; this.rec = obj; }
     }
 
-    public static void record( Context context, boolean isTX, String appID, int datalen )
+    public static void record( Context context, boolean isTX, short port, int datalen )
     {
-        WeekRecord rec = new WeekRecord( appID, isTX, datalen );
+        Assert.assertTrue( port > 0 );
+        WeekRecord rec = new WeekRecord( port, isTX, datalen );
         Carrier entry = new Carrier( context, rec );
-        Log.d( TAG, "record(appID: " + appID + ", in: " + isTX + ", len: " + datalen + ")" );
+        Log.d( TAG, "record(port: " + port + ", in: " + isTX + ", len: " + datalen + ")" );
         sQueue.add( entry );
         startThreadOnce();
     }
 
-    public interface OnHaveData {
+    public interface OnHaveWeekRecords {
         void onHaveData( List<WeekRecord> data );
     }
 
-    public static void getRecords( Context context, OnHaveData proc )
+    public interface OnHaveString {
+        void onHaveData( String data );
+    }
+
+    public interface OnHaveSerializable {
+        void onHaveData( Serializable data );
+    }
+
+    public static void put( Context context, String key, Serializable value )
+    {
+        try {
+            ByteArrayOutputStream bas = new ByteArrayOutputStream();
+            ObjectOutputStream out = new ObjectOutputStream( bas );
+            out.writeObject( value );
+            out.flush();
+            byte[] bytes = bas.toByteArray();
+            String asStr = Base64.encodeToString( bytes, Base64.NO_WRAP );
+
+            put( context, key, asStr );
+        } catch ( Exception ex ) {
+            Log.e( TAG, "put(): ex: " + ex );
+        }
+    }
+
+    public static void put( Context context, String key, String value )
+    {
+        KVPair pair = new KVPair( key, value );
+        Carrier carrier = new Carrier( context, pair );
+        sQueue.add( carrier );
+        startThreadOnce();
+    }
+
+    public static void get( Context context, String key, final OnHaveSerializable proc )
+    {
+        get( context, key, new OnHaveString() {
+                @Override
+                public void onHaveData( String data )
+                {
+                    Serializable result = null;
+                    if ( data != null ) {
+                        byte[] bytes = Base64.decode( data, Base64.NO_WRAP );
+                        try {
+                            ObjectInputStream ois =
+                                new ObjectInputStream( new ByteArrayInputStream(bytes) );
+                            result = (Serializable)ois.readObject();
+                        } catch ( Exception ex ) {
+                            Log.d( TAG, "getSerializable(): " + ex.getMessage() );
+                        }
+                    }
+                    proc.onHaveData( result );
+                }
+            } );
+    }
+
+    public static void get( Context context, String key, OnHaveString proc )
+    {
+        StringRequest request = new StringRequest( key, proc );
+        sQueue.add( new Carrier( context, request ) );
+        startThreadOnce();
+    }
+
+    public static void get( Context context, OnHaveWeekRecords proc )
     {
         DataRequest request = new DataRequest( proc );
         sQueue.add( new Carrier( context, request ) );
@@ -197,20 +275,24 @@ public class StatsDB {
 
         private void process( Carrier carrier )
         {
+            initDB( carrier.context );
+
             Object obj = carrier.rec;
             if ( obj instanceof DataRequest ) {
-                doQuery( carrier.context, (DataRequest)obj );
+                doQuery( (DataRequest)obj );
+            } else if ( obj instanceof StringRequest ) {
+                doQuery( (StringRequest)obj );
             } else if ( obj instanceof WeekRecord ) {
-                addToTable( carrier.context, (WeekRecord)obj );
+                addToTable( (WeekRecord)obj );
+            } else if ( obj instanceof KVPair ) {
+                addToTable( (KVPair)obj );
             } else {
                 Assert.fail();
             }
         }
 
-        private void addToTable( Context context, WeekRecord entry )
+        private void addToTable( WeekRecord entry )
         {
-            initDB( context );
-
             // If there's an entry, append. Otherwise create a new one
             String key = entry.getKey();
             WeekRecord curRecord = getRecord( key );
@@ -220,6 +302,11 @@ public class StatsDB {
                 curRecord = entry;
             }
             putRecord( curRecord );
+        }
+
+        private void addToTable( KVPair pair )
+        {
+            put( pair.key, pair.val );
         }
 
         private WeekRecord getRecord( String key )
@@ -297,10 +384,8 @@ public class StatsDB {
             Log.d( TAG, "put(" + key + ") => " + result );
         }
 
-        private void doQuery( Context context, DataRequest entry )
+        private void doQuery( DataRequest entry )
         {
-            initDB( context );
-
             List<WeekRecord> data = new ArrayList<>();
 
             String selection = String.format( "KEY LIKE '%s'", WeekRecord.keyPattern() );
@@ -322,6 +407,21 @@ public class StatsDB {
             cursor.close();
 
             entry.proc.onHaveData( data );
+        }
+
+        private void doQuery( StringRequest entry )
+        {
+            String val = null;
+            String selection = String.format( "KEY = '%s'", entry.key );
+            String[] columns = { "VALUE" };
+            Cursor cursor = mDb.query( TABLE_NAME, columns, selection, null, null, null, null );
+            int indxVal = cursor.getColumnIndex( "VALUE" );
+            if ( cursor.moveToNext() ) {
+                val = cursor.getString( indxVal );
+            }
+            cursor.close();
+
+            entry.proc.onHaveData( val );
         }
 
         private void initDB( Context context )

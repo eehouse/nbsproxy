@@ -2,6 +2,10 @@
           xmlns:android="http://schemas.android.com/apk/res/android"
           >
   <application>
+
+    <!-- The NBSProxy app uses this receiver to transmit received
+         messages to you. It knows you're there because you've called
+         NBSProxy.register() at some point. -->
     <receiver android:name="org.eehouse.android.nbsplib.NBSProxy">
       <intent-filter>
         <action android:name="android.intent.action.SEND" />
@@ -9,5 +13,6 @@
         <data android:mimeType="text/nbsdata_rx" />
       </intent-filter>
     </receiver>
+
   </application>
 </manifest>
