@@ -119,9 +119,8 @@ public class NBSProxy extends BroadcastReceiver {
      */
     public static boolean isInstalled( Context context )
     {
-        Assert.fail();          // Need to figure out how to get the app's package name
         boolean installed = true;
-        String name = NBSProxy.class.getPackage().getName();
+        String name = BuildConfig.NBSPROXY_APPLICATION_ID;
         PackageManager pm = context.getPackageManager();
         try {
             pm.getPackageInfo( name, 0 );

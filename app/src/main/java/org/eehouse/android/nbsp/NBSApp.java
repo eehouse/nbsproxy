@@ -32,6 +32,7 @@ import org.eehouse.android.nbsplib.NBSProxy;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import junit.framework.Assert;
 
 public class NBSApp extends Application implements NBSProxy.OnReceived {
     private static final String TAG = NBSApp.class.getSimpleName();
@@ -43,6 +44,7 @@ public class NBSApp extends Application implements NBSProxy.OnReceived {
         super.onCreate();
 
         // Required to support test send feature only
+        Assert.assertTrue( NBSProxy.isInstalled(this) );
         NBSProxy.register( this );
 
         // Broadcast receivers for results from NBS message sends

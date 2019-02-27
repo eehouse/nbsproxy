@@ -13,6 +13,7 @@ android {
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
+        buildConfigField "String", "NBSPROXY_APPLICATION_ID", "\"org.eehouse.android.nbsp\""
     }
 
     buildTypes {
