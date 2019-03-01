@@ -19,12 +19,14 @@
 
 package org.eehouse.android.nbsplib;
 
+import android.Manifest;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.telephony.TelephonyManager;
 import android.util.Base64;
 import android.util.Log;
 
@@ -140,6 +142,19 @@ public class NBSProxy extends BroadcastReceiver {
         }
         Log.d( TAG, "isInstalled() => " + installed );
         return installed;
+    }
+
+    public static boolean isGSMPhone( Context context ) // throws something without permission
+    {
+        boolean result = false;
+        TelephonyManager mgr = (TelephonyManager)
+            context.getSystemService(Context.TELEPHONY_SERVICE);
+        if ( null != mgr ) {
+            int type = mgr.getPhoneType();
+            result = TelephonyManager.PHONE_TYPE_GSM == type;
+        }
+        Log.d( TAG, "isGSMPhone() => " + result );
+        return result;
     }
 
     @Override

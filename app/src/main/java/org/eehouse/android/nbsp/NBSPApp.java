@@ -43,6 +43,8 @@ public class NBSPApp extends Application implements NBSProxy.OnReceived {
     {
         super.onCreate();
 
+        NBSProxy.isGSMPhone( this );
+
         // Required to support test send feature only
         Assert.assertTrue( NBSProxy.isInstalled(this) );
         short port = Short.valueOf( getString( R.string.nbsp_port ) );
