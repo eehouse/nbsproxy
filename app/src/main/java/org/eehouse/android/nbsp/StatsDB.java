@@ -156,8 +156,7 @@ public class StatsDB {
         WeekRecord rec = new WeekRecord( port, isTX, datalen );
         Carrier entry = new Carrier( context, rec );
         Log.d( TAG, "record(port: " + port + ", in: " + isTX + ", len: " + datalen + ")" );
-        sQueue.add( entry );
-        startThreadOnce();
+        add( entry );
     }
 
     public interface OnHaveWeekRecords {
@@ -192,8 +191,7 @@ public class StatsDB {
     {
         KVPair pair = new KVPair( key, value );
         Carrier carrier = new Carrier( context, pair );
-        sQueue.add( carrier );
-        startThreadOnce();
+        add( carrier );
     }
 
     public static void get( Context context, String key, final OnHaveSerializable proc )
@@ -221,15 +219,13 @@ public class StatsDB {
     public static void get( Context context, String key, OnHaveString proc )
     {
         StringRequest request = new StringRequest( key, proc );
-        sQueue.add( new Carrier( context, request ) );
-        startThreadOnce();
+        add( new Carrier( context, request ) );
     }
 
     public static void get( Context context, OnHaveWeekRecords proc )
     {
         DataRequest request = new DataRequest( proc );
-        sQueue.add( new Carrier( context, request ) );
-        startThreadOnce();
+        add( new Carrier( context, request ) );
     }
 
     // Something to synchronize on
@@ -245,6 +241,13 @@ public class StatsDB {
     }
 
     private static LinkedBlockingQueue<Carrier> sQueue = new LinkedBlockingQueue<>();
+
+    private static void add( Carrier elem )
+    {
+        sQueue.add( elem );
+        startThreadOnce();
+    }
+
     private static class WriterThread extends Thread {
         private DBHelper mDbHelper;
         private SQLiteDatabase mDb;
