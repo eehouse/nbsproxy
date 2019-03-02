@@ -57,4 +57,19 @@
     <string name="test_result_fmt">Send-to-self test succeeded, taking %.2f seconds.</string>
 
     <string name="stats_button_refresh">Update</string>
+
+    <string name="notify_channel_desc">All notifications</string>
+    <string name="notify_noperm_title">Permission missing</string>
+    <string name="notify_noperm_body">Tap to open app and grant permission</string>
+
+    <string name="alert_msg_not_gsm">NBSProxy only works on GSM
+    phones, which this is not. You might as well uninstall
+    now.</string>
+    <string name="alert_msg_need_perms_fmt">NBSProxy doesn\'t have the
+    permissions it needs to send data or receive data on behalf of
+    %s. Please grant them soon.</string>
+
+    <string name="notify_notgsm_title">Not a GSM device</string>
+    <string name="notify_notgsm_body">NBSProxy can\'t function on this device.</string>
+
 </resources>

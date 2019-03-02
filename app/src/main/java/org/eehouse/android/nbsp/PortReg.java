@@ -20,6 +20,9 @@
 package org.eehouse.android.nbsp;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.util.Log;
 
 import java.io.Serializable;
@@ -81,6 +84,18 @@ public class PortReg {
                     proc.haveAppIDs( result );
                 }
             } );
+    }
+
+    public static String nameFor( Context context, String appID )
+    {
+        String result = null;
+        PackageManager pm = context.getPackageManager();
+        try {
+            ApplicationInfo info = pm.getApplicationInfo(appID, 0);
+            result = info.loadLabel(pm).toString();
+        } catch (PackageManager.NameNotFoundException e) {
+        }
+        return result;
     }
 
     private static HashMap<Short, HashSet<String>> sMap;

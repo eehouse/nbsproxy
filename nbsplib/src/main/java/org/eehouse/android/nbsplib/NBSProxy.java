@@ -124,7 +124,7 @@ public class NBSProxy extends BroadcastReceiver {
             .putExtra( EXTRA_PORT, port )
             ;
         context.sendBroadcast( intent );
-        Log.d( TAG, "launching intent at: org.eehouse.android.nbsp" );
+        Log.d( TAG, "launching intent " + intent + " at: org.eehouse.android.nbsp" );
     }
 
     /**
