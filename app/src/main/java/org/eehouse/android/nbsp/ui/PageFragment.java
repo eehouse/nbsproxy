@@ -29,7 +29,6 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import org.eehouse.android.nbsp.BuildConfig;
-import org.eehouse.android.nbsp.MainActivity;
 import org.eehouse.android.nbsp.R;
 
 public class PageFragment extends Fragment {

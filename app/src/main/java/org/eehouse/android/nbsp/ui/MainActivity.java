@@ -17,7 +17,7 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-package org.eehouse.android.nbsp;
+package org.eehouse.android.nbsp.ui;
 
 import android.Manifest;
 import android.content.Context;
@@ -40,6 +40,7 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.support.design.widget.TabLayout;
 
+import org.eehouse.android.nbsp.R;
 import org.eehouse.android.nbsp.ui.PageFragment;
 
 public class MainActivity extends AppCompatActivity {
