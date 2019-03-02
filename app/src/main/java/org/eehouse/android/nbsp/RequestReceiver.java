@@ -87,22 +87,29 @@ public class RequestReceiver extends BroadcastReceiver {
         short port = intent.getShortExtra( NBSProxy.EXTRA_PORT, (short)-1 );
         if ( ! haveSendPermission( context ) ) {
             MainActivity.notifyNoPermissions( context, port );
+        } else if ( !NBSProxy.isGSMPhone( context ) ) {
+            MainActivity.notifyNotGSM( context );
         } else {
-            String phone = intent.getStringExtra( NBSProxy.EXTRA_PHONE );
-            String text = intent.getStringExtra( Intent.EXTRA_TEXT );
-            byte[] data = Base64.decode( text, Base64.NO_WRAP );
-            final int dataLen = data.length;
+            try {
+                String phone = intent.getStringExtra( NBSProxy.EXTRA_PHONE );
+                String text = intent.getStringExtra( Intent.EXTRA_TEXT );
+                byte[] data = Base64.decode( text, Base64.NO_WRAP );
+                final int dataLen = data.length;
 
-            SmsManager mgr = SmsManager.getDefault();
-            PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
-                                                   dataLen, port );
-            PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
+                SmsManager mgr = SmsManager.getDefault();
+                PendingIntent sent = makeStatusIntent( context, R.string.msg_sent,
                                                        dataLen, port );
-            mgr.sendDataMessage( phone, null, port, data, sent, delivery );
-            Log.d( TAG, "sent " + data.length + " bytes to port "
-                   + port + " on " + phone );
+                PendingIntent delivery = makeStatusIntent( context, R.string.msg_delivered,
+                                                           dataLen, port );
+                mgr.sendDataMessage( phone, null, port, data, sent, delivery );
+                Log.d( TAG, "sent " + data.length + " bytes to port "
+                       + port + " on " + phone );
 
-            StatsDB.record( context, true, port, data.length );
+                StatsDB.record( context, true, port, data.length );
+            } catch ( Exception ex ) {
+                Log.e( TAG, "handleSend() got ex: " + ex.getMessage() );
+                MainActivity.notifySendFailed( context );
+            }
         }
     }
 

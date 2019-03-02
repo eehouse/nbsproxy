@@ -58,6 +58,11 @@ public class MainActivity extends AppCompatActivity {
 
     private static MainActivity sSelf;
 
+    private static enum AlertType { NOT_GSM,
+                                    NEED_PERMS,
+                                    SEND_FAILED,
+    }
+
     // Keep these two arrays in sync
     private static final int sTabTitles[] = { R.string.tab_about_title,
                                               R.string.tab_perms_title,
@@ -71,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
+    private ViewPager mViewPager;
+
     // This will be required eventually to request permissions.
     @Override
     protected void onCreate( Bundle sis )
@@ -78,15 +85,19 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(sis);
         setContentView( R.layout.main_pager );
 
-        ViewPager viewPager = (ViewPager)findViewById( R.id.viewpager );
-        viewPager.setAdapter(new SampleFragmentPagerAdapter(getSupportFragmentManager(), 
-                                                            this));
+        mViewPager = (ViewPager)findViewById( R.id.viewpager );
+        mViewPager.setAdapter(new SampleFragmentPagerAdapter(getSupportFragmentManager(),
+                                                             this));
 
         // Give the TabLayout the ViewPager
         TabLayout tabLayout = (TabLayout)findViewById( R.id.sliding_tabs );
-        tabLayout.setupWithViewPager( viewPager );
+        tabLayout.setupWithViewPager( mViewPager );
 
-        showAlertIf( getIntent() );
+        if ( showAlertIf( getIntent() ) ) {
+            // do nothing
+        } else if ( !NBSProxy.isGSMPhone( this ) ) {
+            showNotGSMAlert();
+        }
     }
 
     @Override
@@ -108,33 +119,26 @@ public class MainActivity extends AppCompatActivity {
         showAlertIf( intent );
     }
 
-    public class SampleFragmentPagerAdapter extends FragmentPagerAdapter {
-        // final int PAGE_COUNT = 3;
-        private Context mContext;
-
-        public SampleFragmentPagerAdapter(FragmentManager fm, Context context) {
-            super(fm);
-            mContext = context;
+    private int itemFor( int itemID )
+    {
+        int result;
+        for ( result = 0; result < sTabTitles.length; ++result ) {
+            if (sTabTitles[result] == itemID ) {
+                break;
+            }
         }
+        return result;
+    }
 
-        @Override
-        public int getCount()
-        {
-            return sTabTitles.length;
-        }
+    private void showNotGSMAlert()
+    {
+        mViewPager.setCurrentItem( itemFor( R.string.tab_about_title ) );
+        showAlert( AlertType.NOT_GSM, R.string.alert_msg_not_gsm );
+    }
 
-        @Override
-        public Fragment getItem( int position )
-        {
-            return PageFragment.newInstance( position );
-        }
-
-        @Override
-        public CharSequence getPageTitle( int position )
-        {
-            // Generate title based on item position
-            return mContext.getString( sTabTitles[position] );
-        }
+    private void showSendFailedAlert()
+    {
+        showAlert( AlertType.SEND_FAILED, R.string.alert_msg_send_failed );
     }
 
     private void showNoPermsAlert( short port )
@@ -144,10 +148,12 @@ public class MainActivity extends AppCompatActivity {
                 public void haveAppIDs( String[] appIDs ) {
                     String name = PortReg.nameFor( MainActivity.this, appIDs[0] );
                     final String msg
-                        = getString( R.string.alert_msg_need_perms_fmt, name );
+                        = getString( R.string.alert_msg_need_perms_fmt, name,
+                                     getString(R.string.perms_button_label) );
                     runOnUiThread( new Runnable() {
                             @Override
                             public void run() {
+                                mViewPager.setCurrentItem( itemFor( R.string.tab_perms_title ) );
                                 showAlert( AlertType.NEED_PERMS, msg );
                             }
                         } );
@@ -155,13 +161,17 @@ public class MainActivity extends AppCompatActivity {
             } );
     }
 
-    private void showAlertIf( Intent intent )
+    private boolean showAlertIf( Intent intent )
     {
         final AlertType type = (AlertType)intent.getSerializableExtra( "TYPE" );
-        if ( type != null ) {
+        boolean shown = type != null;
+        if ( shown ) {
             switch( type ) {
+            case SEND_FAILED:
+                showSendFailedAlert();
+                break;
             case NOT_GSM:
-                showAlert( type, getString(R.string.alert_msg_not_gsm) );
+                showNotGSMAlert();
                 break;
             case NEED_PERMS:
                 short port = intent.getShortExtra( NBSProxy.EXTRA_PORT, (short)-1 );
@@ -169,6 +179,12 @@ public class MainActivity extends AppCompatActivity {
                 break;
             }
         }
+        return shown;
+    }
+
+    private void showAlert( AlertType atyp, int msgID )
+    {
+        showAlert( atyp, getString( msgID ) );
     }
 
     private void showAlert( AlertType atyp, String msg )
@@ -179,10 +195,33 @@ public class MainActivity extends AppCompatActivity {
             .show();
     }
 
-    private static enum AlertType { NOT_GSM,
-                                    NEED_PERMS,
+    public static void notifySendFailed( Context context )
+    {
+        AlertType type = AlertType.SEND_FAILED;
+        MainActivity me = sSelf;
+        if ( me == null || me.isFinishing() ) {
+            Intent intent = makeSelfIntent( context, type )
+                ;
+            postNotification( context, intent, type,
+                              R.string.notify_sendfailed_body );
+        } else {
+            me.showSendFailedAlert();
+        }
     }
 
+    public static void notifyNotGSM( Context context )
+    {
+        AlertType type = AlertType.NOT_GSM;
+        MainActivity me = sSelf;
+        if ( me == null || me.isFinishing() ) {
+            Intent intent = makeSelfIntent( context, type )
+                ;
+            postNotification( context, intent, type,
+                              R.string.notify_notgsm_body );
+        } else {
+            me.showNotGSMAlert();
+        }
+    }
 
     public static void notifyNoPermissions( Context context, short port )
     {
@@ -194,7 +233,6 @@ public class MainActivity extends AppCompatActivity {
                 .putExtra( NBSProxy.EXTRA_PORT, port )
                 ;
             postNotification( context, intent, type,
-                              R.string.notify_noperm_title,
                               R.string.notify_noperm_body );
         } else {
             me.showNoPermsAlert( port );
@@ -212,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static void postNotification( Context context, Intent intent, AlertType typ,
-                                          int titleID, int bodyID )
+                                          int bodyID )
     {
         PendingIntent pi = PendingIntent
             .getActivity( context, 1000, intent, PendingIntent.FLAG_ONE_SHOT );
@@ -223,8 +261,8 @@ public class MainActivity extends AppCompatActivity {
             new NotificationCompat.Builder( context, channelID )
             .setContentIntent( pi )
             .setSmallIcon( R.mipmap.ic_launcher_round )
-            .setContentTitle( context.getString( titleID ) )
             .setContentText( context.getString( bodyID ) )
+            .setAutoCancel( true )
             .build();
 
         NotificationManager nm = (NotificationManager)
@@ -253,5 +291,33 @@ public class MainActivity extends AppCompatActivity {
             sChannelID = name;
         }
         return sChannelID;
+    }
+
+    public class SampleFragmentPagerAdapter extends FragmentPagerAdapter {
+        private Context mContext;
+
+        public SampleFragmentPagerAdapter(FragmentManager fm, Context context) {
+            super(fm);
+            mContext = context;
+        }
+
+        @Override
+        public int getCount()
+        {
+            return sTabTitles.length;
+        }
+
+        @Override
+        public Fragment getItem( int position )
+        {
+            return PageFragment.newInstance( position );
+        }
+
+        @Override
+        public CharSequence getPageTitle( int position )
+        {
+            // Generate title based on item position
+            return mContext.getString( sTabTitles[position] );
+        }
     }
 }

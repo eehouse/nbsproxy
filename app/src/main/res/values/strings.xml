@@ -14,11 +14,11 @@
     text messages you probably exchange with friends and
     family.</string>
 
-    <string name="permissions2">When you tap the \"Grant Permissions\"
-    button below you\'ll see up to two Android system dialogs
-    prompting you to confirm. You\'ll be asked to confirm SMS messages
-    and managing phone calls. I have no idea why Android requires the
-    latter for sending NBS data, but it does.</string>
+    <string name="permissions2">When you tap the \"Request
+    Permissions\" button below you\'ll see up to two Android system
+    dialogs prompting you to confirm. You\'ll be asked to confirm SMS
+    messages and managing phone calls. I have no idea why Android
+    requires the latter for sending NBS data, but it does.</string>
 
     <string name="have_perms">NBSProxy has already been granted the
     permissions it needs to function. You may never need to launch it
@@ -59,17 +59,21 @@
     <string name="stats_button_refresh">Update</string>
 
     <string name="notify_channel_desc">All notifications</string>
-    <string name="notify_noperm_title">Permission missing</string>
     <string name="notify_noperm_body">Tap to open app and grant permission</string>
 
     <string name="alert_msg_not_gsm">NBSProxy only works on GSM
     phones, which this is not. You might as well uninstall
     now.</string>
     <string name="alert_msg_need_perms_fmt">NBSProxy doesn\'t have the
-    permissions it needs to send data or receive data on behalf of
-    %s. Please grant them soon.</string>
+    permissions it needs to send or receive data on behalf of
+    %1$s. Please use the \"%2$s\" button to grant them.</string>
 
-    <string name="notify_notgsm_title">Not a GSM device</string>
     <string name="notify_notgsm_body">NBSProxy can\'t function on this device.</string>
+
+    <string name="alert_msg_send_failed">NBSProxy was unable to send
+    data. Usually this means your device is not on a compatible
+    cellular network (e.g. because it\'s out of coverage, or has no
+    SIM card installed.)</string>
+    <string name="notify_sendfailed_body">Unable to send data</string>
 
 </resources>
