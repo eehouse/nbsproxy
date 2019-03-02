@@ -1,27 +1,5 @@
-Let's try tabs. ABOUT, PERMISSIONS, TEST, and STATS?
+* Use names, not appIDs, in everything user-visible.
 
-PERMISSIONS requests permission. Will likely launch into that on first
-install, and be able to post a notification that launches to that when
-unable to send the first time.
-
-ABOUT is the explanation of why the app exists.
-
-TEST lets you send an MSB message to yourself to verify it all
-works. May require a new permission to look up phone number. I *don't*
-want to allow send to arbitrary numbers.
-
-Stats show what apps are using and how many messages and bytes have
-been sent/received on their behalf.
-
-* Get permissions! Likely will want to offer "uninstall" option to
-  those who refuse.
-
-* Add DB for registering, but also for tracking stats. Track number of
-  bytes sent and received on which app's behalf. Maybe the UI shows
-  these stats, at least in DEBUG build. Might be enough to store
-  everything in Serializable objects and write them to preferences as
-  Strings.
-
-* Figure out what user sees when launching the app, besides a "nothing
-  to see here" message. Maybe list of apps that are using it at least,
-  with basic stats.
+* Would be useful in testing NBS apps to have the send-to-self case
+  avoid the phone network for super-fast speeds that'd stress-test
+  service code.
