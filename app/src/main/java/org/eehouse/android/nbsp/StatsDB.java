@@ -164,11 +164,11 @@ public class StatsDB {
     }
 
     public interface OnHaveString {
-        void onHaveData( String data );
+        void onHaveData( String key, String data );
     }
 
     public interface OnHaveSerializable {
-        void onHaveData( Serializable data );
+        void onHaveData( String key, Serializable data );
     }
 
     public static void put( Context context, String key, Serializable value )
@@ -198,7 +198,7 @@ public class StatsDB {
     {
         get( context, key, new OnHaveString() {
                 @Override
-                public void onHaveData( String data )
+                public void onHaveData( String key, String data )
                 {
                     Serializable result = null;
                     if ( data != null ) {
@@ -211,7 +211,7 @@ public class StatsDB {
                             Log.d( TAG, "getSerializable(): " + ex.getMessage() );
                         }
                     }
-                    proc.onHaveData( result );
+                    proc.onHaveData( key, result );
                 }
             } );
     }
@@ -389,7 +389,7 @@ public class StatsDB {
 
         private void doQuery( DataRequest entry )
         {
-            List<WeekRecord> data = new ArrayList<>();
+            List<WeekRecord> weeks = new ArrayList<>();
 
             String selection = String.format( "KEY LIKE '%s'", WeekRecord.keyPattern() );
             String[] columns = { "KEY", "VALUE" };
@@ -404,12 +404,12 @@ public class StatsDB {
                     String key = cursor.getString( indxKey );
                     Log.e( TAG, "tossing week for " + key );
                 } else {
-                    data.add( week );
+                    weeks.add( week );
                 }
             }
             cursor.close();
 
-            entry.proc.onHaveData( data );
+            entry.proc.onHaveData( weeks );
         }
 
         private void doQuery( StringRequest entry )
@@ -424,7 +424,7 @@ public class StatsDB {
             }
             cursor.close();
 
-            entry.proc.onHaveData( val );
+            entry.proc.onHaveData( entry.key, val );
         }
 
         private void initDB( Context context )

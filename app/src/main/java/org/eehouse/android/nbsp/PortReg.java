@@ -106,7 +106,7 @@ public class PortReg {
         } else {
             StatsDB.get( context, MAP_KEY, new StatsDB.OnHaveSerializable() {
                     @Override
-                    public void onHaveData( Serializable datum )
+                    public void onHaveData( String key, Serializable datum )
                     {
                         sMap = (HashMap<Short, HashSet<String>>)datum;
                         if ( sMap == null ) {
