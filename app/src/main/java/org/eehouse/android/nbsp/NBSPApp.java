@@ -29,6 +29,8 @@ import android.util.Log;
 
 import org.eehouse.android.nbsplib.NBSProxy;
 
+import org.eehouse.android.nbsp.ui.MainActivity;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,6 +74,10 @@ public class NBSPApp extends Application implements NBSProxy.Callbacks {
     {
         // There's no way this can fail: I *am* the app....
         Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
+        if ( !appReached ) {    //  this should be impossible in the app itself
+            NBSProxy.postLaunchNotification( this, MainActivity.makeChannelID(this),
+                                         R.mipmap.ic_launcher_round );
+        }
     }
 
     @Override

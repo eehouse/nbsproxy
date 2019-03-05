@@ -21,11 +21,15 @@ package org.eehouse.android.nbsplib;
 
 import android.Manifest;
 import android.app.Application;
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.support.v4.app.NotificationCompat;
 import android.telephony.TelephonyManager;
 import android.util.Base64;
 import android.util.Log;
@@ -126,6 +130,40 @@ public class NBSProxy extends BroadcastReceiver {
         Log.d( TAG, "register(" + procs + ") for appID " + appID
                        + " => " + unique );
         return unique;
+    }
+
+    /**
+     * Utility function to post, using app's channel etc., a notification with
+     * explanation that if selected will launch NBSProxy, after which it
+     * should respond to Intents and be able to ask for the permissions it needs
+     *
+     * @param channelID The client app's notification channel, already established
+     *
+     * @param iconID The client app's small icon for notifications
+     *
+     */
+    public static void postLaunchNotification( Context context, String channelID,
+                                               int iconID )
+    {
+        Intent intent = context.getPackageManager()
+            .getLaunchIntentForPackage( BuildConfig.NBSPROXY_APPLICATION_ID )
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP );
+
+        PendingIntent pi = PendingIntent
+            .getActivity( context, 1000, intent, PendingIntent.FLAG_ONE_SHOT );
+
+        Notification notification =
+            new NotificationCompat.Builder( context, channelID )
+            .setContentIntent( pi )
+            .setSmallIcon( iconID )
+            .setContentTitle( context.getString( R.string.launch_notify_title ) )
+            .setContentText( context.getString( R.string.launch_notify_body ) )
+            .setAutoCancel( true )
+            .build();
+
+        NotificationManager nm = (NotificationManager)
+            context.getSystemService( Context.NOTIFICATION_SERVICE );
+        nm.notify( iconID, notification );
     }
 
     /**

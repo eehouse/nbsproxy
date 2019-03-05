@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">NBSProxyLib</string>
+  <string name="launch_notify_title">Launch NBSProxy</string>
+  <string name="launch_notify_body">NBSProxy needs to be launched
+  before it can do its job.</string>
 </resources>

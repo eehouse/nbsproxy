@@ -271,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static String sChannelID = null;
-    private static String makeChannelID( Context context )
+    public static String makeChannelID( Context context )
     {
         if ( sChannelID == null ) {
             String name = "default";
