@@ -99,13 +99,10 @@ public class NBSReceiver extends BroadcastReceiver {
                                                               Base64.NO_WRAP );
                         for ( String appID : appIDs ) {
                             try {
-                                Intent intent = new Intent()
-                                    .setAction( Intent.ACTION_SEND )
+                                Intent intent = makeRXIntent( appID )
                                     .putExtra( Intent.EXTRA_TEXT, asStr )
                                     .putExtra( NBSProxy.EXTRA_PHONE, phone )
                                     .putExtra( NBSProxy.EXTRA_PORT, port )
-                                    .setPackage( appID )
-                                    .setType( "text/nbsdata_rx" )
                                     ;
                                 context.sendBroadcast( intent );
                             } catch ( android.content.ActivityNotFoundException anfe ) {
@@ -117,6 +114,16 @@ public class NBSReceiver extends BroadcastReceiver {
                     }
                 }
             } );
+    }
+
+    public static Intent makeRXIntent( String appID )
+    {
+        Intent rxIntent = new Intent()
+            .setAction( Intent.ACTION_SEND )
+            .setType( "text/nbsdata_rx" )
+            .setPackage( appID )
+            ;
+        return rxIntent;
     }
 
     private static Short sPort;

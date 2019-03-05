@@ -57,6 +57,7 @@ public class RequestReceiver extends BroadcastReceiver {
             switch ( cmd ) {
             case REG:
                 handleReg( context, intent );
+                sendRegResponse( context, intent );
                 break;
             case SEND:
                 handleSend( context, intent );
@@ -111,6 +112,20 @@ public class RequestReceiver extends BroadcastReceiver {
                 MainActivity.notifySendFailed( context );
             }
         }
+    }
+
+    private void sendRegResponse( Context context, Intent intent )
+    {
+        long regTime = intent.getLongExtra( NBSProxy.EXTRA_REGTIME, -1 );
+        long respTime = System.currentTimeMillis();
+        Log.d( TAG, "sendPong(): receipt took " + (respTime - regTime) + "ms");
+
+        String appID = intent.getStringExtra( NBSProxy.EXTRA_APPID );
+        Intent pongIntent = NBSReceiver.makeRXIntent( appID )
+            .putExtra( NBSProxy.EXTRA_REGTIME, regTime )
+            .putExtra( NBSProxy.EXTRA_REGRESPTIME, respTime )
+            ;
+        context.sendBroadcast( pongIntent );
     }
 
     private int mNextID = new Random().nextInt();

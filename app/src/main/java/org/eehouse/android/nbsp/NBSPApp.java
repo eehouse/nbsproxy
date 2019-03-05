@@ -34,9 +34,9 @@ import java.util.HashMap;
 import java.util.Map;
 import junit.framework.Assert;
 
-public class NBSPApp extends Application implements NBSProxy.OnReceived {
+public class NBSPApp extends Application implements NBSProxy.Callbacks {
     private static final String TAG = NBSPApp.class.getSimpleName();
-    private static Map<Integer, NBSProxy.OnReceived> sProcs = new HashMap<>();;
+    private static Map<Integer, NBSProxy.Callbacks> sProcs = new HashMap<>();
 
     @Override
     public void onCreate()
@@ -68,9 +68,16 @@ public class NBSPApp extends Application implements NBSProxy.OnReceived {
     }
 
     @Override
+    public void onRegResponse( boolean appReached )
+    {
+        // There's no way this can fail: I *am* the app....
+        Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
+    }
+
+    @Override
     public void onDataReceived( short port, String fromPhone, byte[] data )
     {
-        NBSProxy.OnReceived proc = sProcs.remove( Arrays.hashCode(data) );
+        NBSProxy.Callbacks proc = sProcs.remove( Arrays.hashCode(data) );
         if ( proc != null ) {
             try {
                 proc.onDataReceived( port, fromPhone, data );
@@ -80,7 +87,7 @@ public class NBSPApp extends Application implements NBSProxy.OnReceived {
         }
     }
 
-    public static void setNBSCallback( byte[] data, NBSProxy.OnReceived proc )
+    public static void setNBSCallback( byte[] data, NBSProxy.Callbacks proc )
     {
         int hash = Arrays.hashCode(data);
         sProcs.put( hash, proc );

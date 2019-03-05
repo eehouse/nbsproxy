@@ -57,7 +57,9 @@ import java.util.Arrays;
 
 public class NBSProxy extends BroadcastReceiver {
     private static final String TAG = NBSProxy.class.getSimpleName();
-    private static WeakReference<OnReceived> sProcRef;
+    private static WeakReference<Callbacks> sProcRef;
+    private static Object sWaiter = new Object();
+    private static long sWaitTime;
 
     // Keys for passing stuff around in intents.
     public static final String EXTRA_PHONE = TAG + ".phone";
@@ -65,6 +67,10 @@ public class NBSProxy extends BroadcastReceiver {
     public static final String EXTRA_APPID = TAG + ".appid";
     public static final String EXTRA_DATALEN = TAG + ".len";
     public static final String EXTRA_CMD = TAG + ".cmd";
+    public static final String EXTRA_REGTIME = TAG + ".regTime";
+    public static final String EXTRA_REGRESPTIME = TAG + ".respTime";
+
+    private static Thread sWaitThread;
 
     // values for EXTRA_CMD
     public static enum CTRL {
@@ -72,7 +78,8 @@ public class NBSProxy extends BroadcastReceiver {
         SEND,
     }
 
-    public interface OnReceived {
+    public interface Callbacks {
+        void onRegResponse( boolean appReached );
         void onDataReceived( short port, String fromPhone, byte[] data );
     }
 
@@ -83,24 +90,42 @@ public class NBSProxy extends BroadcastReceiver {
      * data in each incoming message.
      *
      * @param proc reference to your callback that <em>MUST</em> be an
-     * Application instance that implements NBSProxy.OnReceived. That's to
+     * Application instance that implements NBSProxy.Callbacks. That's to
      * force you to pass something that won't be gc'd prematurely, which in
      * turn lets me store it in a WeakReference that won't cause any leaks.
-     * You don't need to clear it later by passing null: gc's magic.
+     * That way you don't need to clear it later: gc's magic. (Note: I'll
+     * revist this, as I suspect it's wrong. But it works for now even if it's
+     * too cautious.)
+     *
+     * @return false if unable to contact the app because an earlier
+     * registration is still waiting a response.
      */
-    public static void register( short port, String appID, OnReceived proc )
+    public static boolean register( short port, String appID, Callbacks procs )
     {
-        Log.d( TAG, "register(" + proc + ") for appID " + appID );
-
-        // Caller can't just call <code>register( new OnReceived(){} )</code>
+        // Caller can't just call <code>register( new Callbacks(){} )</code>
         // or with no other reference to the proc it'll get gc'd. So force
-        // them to pass an Application that implements OnReceived. If other's
+        // them to pass an Application that implements Callbacks. If other's
         // use this and care, I'll address.
-        assert( proc instanceof Application );
-        Context context = (Context)proc; // as long as we're doing the assert :-)
+        assert( procs instanceof Application );
 
-        sProcRef = new WeakReference<>( proc );
-        sendRegIntent( context, port, appID );
+        boolean unique = false;
+        synchronized ( NBSProxy.class ) {
+            unique = sWaitThread == null;
+            if ( unique ) {
+                sWaitThread = startWaitThread();
+            }
+        }
+
+        if ( unique ) {
+            Context context = (Context)procs; // as long as we're doing the assert :-)
+
+            sProcRef = new WeakReference<>( procs );
+
+            sendRegIntent( context, port, appID );
+        }
+        Log.d( TAG, "register(" + procs + ") for appID " + appID
+                       + " => " + unique );
+        return unique;
     }
 
     /**
@@ -164,23 +189,25 @@ public class NBSProxy extends BroadcastReceiver {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_rx".equals( intent.getType() ) ) {
-            String text = intent.getStringExtra( Intent.EXTRA_TEXT );
-            String phone = intent.getStringExtra( EXTRA_PHONE );
-            short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
-            if ( text == null ) {
-                Log.e( TAG, "onReceive(): null text" );
-            } else if ( phone == null ) {
-                Log.e( TAG, "onReceive(): null phone" );
-            } else if ( port == -1 ) {
-                Log.e( TAG, "onReceive(): missing port" );
-            } else {
-                byte[] data = Base64.decode( text, Base64.NO_WRAP );
-                if ( sProcRef != null ) {
-                    OnReceived proc = sProcRef.get();
-                    if ( proc != null ) {
-                        Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
-                               + phone );
-                        proc.onDataReceived( port, phone, data );
+            if ( ! handleRegResponse( context, intent ) ) {
+                String text = intent.getStringExtra( Intent.EXTRA_TEXT );
+                String phone = intent.getStringExtra( EXTRA_PHONE );
+                short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
+                if ( text == null ) {
+                    Log.e( TAG, "onReceive(): null text" );
+                } else if ( phone == null ) {
+                    Log.e( TAG, "onReceive(): null phone" );
+                } else if ( port == -1 ) {
+                    Log.e( TAG, "onReceive(): missing port" );
+                } else {
+                    byte[] data = Base64.decode( text, Base64.NO_WRAP );
+                    if ( sProcRef != null ) {
+                        Callbacks proc = sProcRef.get();
+                        if ( proc != null ) {
+                            Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
+                                   + phone );
+                            proc.onDataReceived( port, phone, data );
+                        }
                     }
                 }
             }
@@ -192,9 +219,64 @@ public class NBSProxy extends BroadcastReceiver {
         Intent intent = getBaseIntent( CTRL.REG )
             .putExtra( EXTRA_PORT, port )
             .putExtra( EXTRA_APPID, appID )
+            .putExtra( EXTRA_REGTIME, System.currentTimeMillis() )
             ;
         Log.d( TAG, "sendRegIntent() sending " + intent );
         context.sendBroadcast( intent );
+    }
+
+    // Return true IFF it's a reg response and not a message to be forwarded.
+    private boolean handleRegResponse( Context context, Intent intent )
+    {
+        boolean isRegResponse = false;
+        long regTime = intent.getLongExtra( NBSProxy.EXTRA_REGTIME, -1 );
+        if ( regTime != -1 ) {
+            long respTime = intent.getLongExtra( NBSProxy.EXTRA_REGRESPTIME, -1 );
+            if ( respTime != -1 ) {
+                isRegResponse = true;
+
+                long waitTime = System.currentTimeMillis() - regTime;
+                Log.d( TAG, "got regResponse; round trip took " + waitTime + "ms" );
+                synchronized ( sWaiter ) {
+                    sWaitTime = waitTime;
+                    sWaiter.notify();
+                }
+            }
+        }
+        return isRegResponse;
+    }
+
+    private static Thread startWaitThread()
+    {
+        final long startMS = System.currentTimeMillis();
+        Thread result = new Thread( new Runnable() {
+                @Override
+                public void run() {
+                    synchronized ( sWaiter ) {
+                        sWaitTime = -1;
+                        try {
+                            sWaiter.wait( 20 * 1000 ); // wait 20 seconds
+                            Log.d( TAG, "startWaitThread(): wait returned after "
+                                   + (System.currentTimeMillis() - startMS) + "ms" );
+                            boolean appReached = sWaitTime >= 0;
+                            if ( sProcRef != null ) {
+                                Callbacks procs = sProcRef.get();
+                                if ( procs != null ) {
+                                    procs.onRegResponse( appReached );
+                                }
+                            }
+                        } catch ( InterruptedException ex ) {
+                            Log.d( TAG, "startWaitThread(): interrupted: " +
+                                   ex.getMessage() );
+                        }
+                    }
+                    synchronized ( NBSProxy.class ) {
+                        sWaitThread = null;
+                    }
+                }
+            } );
+        result.start();
+        return result;
     }
 
     private static Intent getBaseIntent( CTRL cmd )

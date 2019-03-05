@@ -77,7 +77,13 @@ public class TestFragment extends PageFragment {
         final byte[] data = new byte[24 + random.nextInt(24)]; // 24-48 bytes
         random.nextBytes( data );
 
-        NBSPApp.setNBSCallback(data, new NBSProxy.OnReceived() {
+        NBSPApp.setNBSCallback(data, new NBSProxy.Callbacks() {
+                @Override
+                public void onRegResponse( boolean appReached )
+                {
+                    assert( appReached );
+                }
+
                 @Override
                 public void onDataReceived( short port,
                                             String fromPhone,
