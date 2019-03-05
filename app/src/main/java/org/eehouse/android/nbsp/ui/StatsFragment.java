@@ -79,14 +79,19 @@ public class StatsFragment extends PageFragment {
                                     @Override
                                     public void haveAppIDs( String[] appIDs )
                                     {
-                                        if ( appIDs == null || appIDs.length == 0 ) {
-                                            appIDs = new String[] {"<unknown>"};
+                                        String appStr;
+                                        for ( int ii = 0; ii < appIDs.length; ++ii ) {
+                                            appIDs[ii] = PortReg
+                                                .nameFor( getActivity(), appIDs[ii] );
                                         }
-                                        sb.append( "appIDs: [")
-                                            .append( TextUtils.join(",",appIDs))
-                                            .append("]: " )
-                                            .append( rec )
-                                            .append('\n');
+                                        if ( appIDs.length == 1 ) { // the common case
+                                            sb.append( "app: " ).append( appIDs[0] );
+                                        } else {
+                                            sb.append( "apps: [" )
+                                                .append( TextUtils.join(",",appIDs) )
+                                                .append(']');
+                                        }
+                                        sb.append( ": " ).append( rec ).append('\n');
                                     }
                                 } );
             }
