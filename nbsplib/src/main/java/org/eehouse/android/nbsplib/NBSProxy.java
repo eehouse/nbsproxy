@@ -31,6 +31,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
@@ -66,6 +67,7 @@ public class NBSProxy extends BroadcastReceiver {
     private static long sWaitTime;
 
     // Keys for passing stuff around in intents.
+    public static final String EXTRA_VERSION = TAG + ".version";
     public static final String EXTRA_PHONE = TAG + ".phone";
     public static final String EXTRA_PORT = TAG + ".port";
     public static final String EXTRA_APPID = TAG + ".appid";
@@ -73,6 +75,8 @@ public class NBSProxy extends BroadcastReceiver {
     public static final String EXTRA_CMD = TAG + ".cmd";
     public static final String EXTRA_REGTIME = TAG + ".regTime";
     public static final String EXTRA_REGRESPTIME = TAG + ".respTime";
+    public static final String EXTRA_ERROR_MSG = TAG + ".errmsg";
+    public static final String EXTRA_CLIENTOLD = TAG + ".clientOld";
 
     private static Thread sWaitThread;
 
@@ -183,7 +187,7 @@ public class NBSProxy extends BroadcastReceiver {
         Intent intent = getBaseIntent( CTRL.SEND )
             .putExtra( Intent.EXTRA_TEXT, asStr )
             .putExtra( EXTRA_PHONE, phone )
-            .putExtra( EXTRA_APPID, BuildConfig.APPLICATION_ID )
+            .putExtra( EXTRA_APPID, context.getPackageName() )
             .putExtra( EXTRA_PORT, port )
             ;
         context.sendBroadcast( intent );
@@ -227,29 +231,74 @@ public class NBSProxy extends BroadcastReceiver {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_rx".equals( intent.getType() ) ) {
-            if ( ! handleRegResponse( context, intent ) ) {
-                String text = intent.getStringExtra( Intent.EXTRA_TEXT );
-                String phone = intent.getStringExtra( EXTRA_PHONE );
-                short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
-                if ( text == null ) {
-                    Log.e( TAG, "onReceive(): null text" );
-                } else if ( phone == null ) {
-                    Log.e( TAG, "onReceive(): null phone" );
-                } else if ( port == -1 ) {
-                    Log.e( TAG, "onReceive(): missing port" );
+
+            if ( 0 == versionOk( intent ) ) {
+                if ( handleRegResponse( context, intent ) ) {
+                    // nothing to do
                 } else {
-                    byte[] data = Base64.decode( text, Base64.NO_WRAP );
-                    if ( sProcRef != null ) {
-                        Callbacks proc = sProcRef.get();
-                        if ( proc != null ) {
-                            Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
-                                   + phone );
-                            proc.onDataReceived( port, phone, data );
+                    String text = intent.getStringExtra( Intent.EXTRA_TEXT );
+                    String phone = intent.getStringExtra( EXTRA_PHONE );
+                    short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
+                    if ( text == null ) {
+                        Log.e( TAG, "onReceive(): null text" );
+                    } else if ( phone == null ) {
+                        Log.e( TAG, "onReceive(): null phone" );
+                    } else if ( port == -1 ) {
+                        Log.e( TAG, "onReceive(): missing port" );
+                    } else {
+                        byte[] data = Base64.decode( text, Base64.NO_WRAP );
+                        if ( sProcRef != null ) {
+                            Callbacks proc = sProcRef.get();
+                            if ( proc != null ) {
+                                Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
+                                       + phone );
+                                proc.onDataReceived( port, phone, data );
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Called by the NBSProxy app. Client apps don't need this.
+     *
+     * Like strcmp, returns 0 if they're the same, a negative number if the
+     * version in the intent is older and a postive one if the local version
+     * is older.
+     *
+     * Version string is something like 1.2.3, with 1 and 2 the major and
+     * minor version numbers and 3 the release. If the first two are the same
+     * the versions are compatible and match.
+     *
+     * @param intent Intent received from the other side
+     *
+     * @return Like strcmp, returns 0 if they're the same, a negative number
+     * if the version in the intent is older and a postive one if the local
+     * version is older.
+     */
+    public static int versionOk( Intent intent )
+    {
+        int result = 0;
+        String version = intent.getStringExtra( EXTRA_VERSION );
+        if ( version == null || version.length() == 0 ) {
+            result = -1;        // missing means you're older
+        } else {
+            String[] received = TextUtils.split(version, "\\.");
+            String[] mine = TextUtils.split(BuildConfig.NBSP_VERSION, "\\.");
+            Assert.assertTrue( mine.length == 3 );
+            if ( received.length != 3 ) {
+                result = -1;    // bad format? You're older
+            } else {
+                for ( int ii = 0; result == 0 && ii < 2; ++ii ) {
+                    result = Integer.valueOf(mine[ii]) - Integer.valueOf(received[ii]);
+                }
+            }
+        }
+        // Log.d( TAG, "versionsOk(other: " + version + ", me: "
+        //        + BuildConfig.NBSP_VERSION + ") => " + result);
+        return result;
     }
 
     private static void sendRegIntent( Context context, short port, String appID )
@@ -320,6 +369,7 @@ public class NBSProxy extends BroadcastReceiver {
     private static Intent getBaseIntent( CTRL cmd )
     {
         Intent intent = new Intent()
+            .putExtra( EXTRA_VERSION, BuildConfig.NBSP_VERSION )
             .putExtra( EXTRA_CMD, cmd.ordinal() )
             .setAction( Intent.ACTION_SEND )
             .setType( "text/nbsdata_tx" )

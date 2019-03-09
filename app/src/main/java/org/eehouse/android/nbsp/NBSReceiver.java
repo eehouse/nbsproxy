@@ -23,7 +23,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.telephony.SmsMessage;
 import android.util.Base64;
@@ -119,6 +118,8 @@ public class NBSReceiver extends BroadcastReceiver {
     public static Intent makeRXIntent( String appID )
     {
         Intent rxIntent = new Intent()
+            .putExtra( NBSProxy.EXTRA_VERSION,
+                       org.eehouse.android.nbsplib.BuildConfig.NBSP_VERSION )
             .setAction( Intent.ACTION_SEND )
             .setType( "text/nbsdata_rx" )
             .setPackage( appID )

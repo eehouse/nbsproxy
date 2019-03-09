@@ -51,17 +51,26 @@ public class RequestReceiver extends BroadcastReceiver {
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_tx".equals( intent.getType() ) ) {
-            NBSProxy.CTRL cmd = NBSProxy.CTRL
-                .values()[intent.getIntExtra( NBSProxy.EXTRA_CMD, -1 ) ];
-            Log.d( TAG, "onReceive() got cmd: " + cmd );
-            switch ( cmd ) {
-            case REG:
-                handleReg( context, intent );
-                sendRegResponse( context, intent );
-                break;
-            case SEND:
-                handleSend( context, intent );
-                break;
+
+            int versOk = NBSProxy.versionOk( intent );
+            if ( versOk == 0 ) {
+                NBSProxy.CTRL cmd = NBSProxy.CTRL
+                    .values()[intent.getIntExtra( NBSProxy.EXTRA_CMD, -1 ) ];
+                Log.d( TAG, "onReceive() got cmd: " + cmd );
+                switch ( cmd ) {
+                case REG:
+                    handleReg( context, intent );
+                    sendRegResponse( context, intent );
+                    break;
+                case SEND:
+                    handleSend( context, intent );
+                    break;
+                }
+            } else {
+                sendErrorResponse( context, intent, "version mismatch" );
+
+                String appID = intent.getStringExtra( NBSProxy.EXTRA_APPID );
+                MainActivity.notifyVersionMismatch( context, appID, versOk < 0 );
             }
         }
     }
@@ -112,6 +121,17 @@ public class RequestReceiver extends BroadcastReceiver {
                 MainActivity.notifySendFailed( context );
             }
         }
+    }
+
+    // If this is about version mistmatch, any intent will suffice because the
+    // library checks version on its end.
+    private void sendErrorResponse( Context context, Intent intent, String msg )
+    {
+        String appID = intent.getStringExtra( NBSProxy.EXTRA_APPID );
+        Intent errIntent = NBSReceiver.makeRXIntent( appID )
+            .putExtra( NBSProxy.EXTRA_ERROR_MSG, msg )
+            ;
+        context.sendBroadcast( errIntent );
     }
 
     private void sendRegResponse( Context context, Intent intent )

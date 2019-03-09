@@ -1,9 +1,10 @@
 apply plugin: 'com.android.library'
 
+// This should match the tag, and version string of NBSProxy app
+def NBSP_VERSION = "0.1.0"
+
 android {
     compileSdkVersion 27
-
-
 
     defaultConfig {
         minSdkVersion 11
@@ -14,6 +15,7 @@ android {
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", "NBSPROXY_APPLICATION_ID", "\"org.eehouse.android.nbsp\""
+        buildConfigField "String", "NBSP_VERSION", "\"${NBSP_VERSION}\""
     }
 
     buildTypes {

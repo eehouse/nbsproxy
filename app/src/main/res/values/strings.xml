@@ -76,4 +76,9 @@
     SIM card installed.)</string>
     <string name="notify_sendfailed_body">Unable to send data</string>
 
+    <string name="notify_badversion_body">Version mismatch</string>
+    <string name="alert_bad_version_fmt">The versions of the client
+    app \"%1$s\" and NBSProxy are incompatible. %2$s appears to be
+    older and probably needs to be upgraded.</string>
+
 </resources>

@@ -61,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
     private static enum AlertType { NOT_GSM,
                                     NEED_PERMS,
                                     SEND_FAILED,
+                                    VERS_MISMATCH,
     }
 
     // Keep these two arrays in sync
@@ -141,6 +142,15 @@ public class MainActivity extends AppCompatActivity {
         showAlert( AlertType.SEND_FAILED, R.string.alert_msg_send_failed );
     }
 
+    private void showBadVersionAlert( String appID, boolean clientOlder )
+    {
+        String clientName = PortReg.nameFor( this, appID );
+        String olderApp = clientOlder ? clientName : getString( R.string.app_name );
+        String msg = getString( R.string.alert_bad_version_fmt,
+                                clientName, olderApp );
+        showAlert( AlertType.VERS_MISMATCH, msg );
+    }
+
     private void showNoPermsAlert( short port )
     {
         PortReg.lookup( this, port, new PortReg.OnHaveAppIDs() {
@@ -177,6 +187,11 @@ public class MainActivity extends AppCompatActivity {
                 short port = intent.getShortExtra( NBSProxy.EXTRA_PORT, (short)-1 );
                 showNoPermsAlert( port );
                 break;
+            case VERS_MISMATCH:
+                String appID = intent.getStringExtra( NBSProxy.EXTRA_APPID );
+                boolean clientOlder = intent.getBooleanExtra( NBSProxy.EXTRA_CLIENTOLD, true );
+                showBadVersionAlert( appID, clientOlder );
+                break;
             }
         }
         return shown;
@@ -193,6 +208,24 @@ public class MainActivity extends AppCompatActivity {
             .setMessage( msg )
             .setPositiveButton( android.R.string.ok, null )
             .show();
+    }
+
+    public static void notifyVersionMismatch( Context context,
+                                              String appID,
+                                              boolean clientOlder )
+    {
+        AlertType type = AlertType.VERS_MISMATCH;
+        MainActivity me = sSelf;
+        if ( me == null || me.isFinishing() ) {
+            Intent intent = makeSelfIntent( context, type )
+                .putExtra( NBSProxy.EXTRA_APPID, appID )
+                .putExtra( NBSProxy.EXTRA_CLIENTOLD, clientOlder )
+                ;
+            postNotification( context, intent, type,
+                              R.string.notify_badversion_body );
+        } else {
+            me.showBadVersionAlert( appID, clientOlder );
+        }
     }
 
     public static void notifySendFailed( Context context )
