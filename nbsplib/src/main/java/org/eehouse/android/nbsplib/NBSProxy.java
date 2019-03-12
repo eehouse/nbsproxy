@@ -159,24 +159,26 @@ public class NBSProxy extends BroadcastReceiver {
                                                int iconID )
     {
         Intent intent = context.getPackageManager()
-            .getLaunchIntentForPackage( BuildConfig.NBSPROXY_APPLICATION_ID )
-            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP );
+            .getLaunchIntentForPackage( BuildConfig.NBSPROXY_APPLICATION_ID );
+        if ( intent != null ) { // installed?
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP );
 
-        PendingIntent pi = PendingIntent
-            .getActivity( context, 1000, intent, PendingIntent.FLAG_ONE_SHOT );
+            PendingIntent pi = PendingIntent
+                .getActivity( context, 1000, intent, PendingIntent.FLAG_ONE_SHOT );
 
-        Notification notification =
-            new NotificationCompat.Builder( context, channelID )
-            .setContentIntent( pi )
-            .setSmallIcon( iconID )
-            .setContentTitle( context.getString( R.string.launch_notify_title ) )
-            .setContentText( context.getString( R.string.launch_notify_body ) )
-            .setAutoCancel( true )
-            .build();
+            Notification notification =
+                new NotificationCompat.Builder( context, channelID )
+                .setContentIntent( pi )
+                .setSmallIcon( iconID )
+                .setContentTitle( context.getString( R.string.launch_notify_title ) )
+                .setContentText( context.getString( R.string.launch_notify_body ) )
+                .setAutoCancel( true )
+                .build();
 
-        NotificationManager nm = (NotificationManager)
-            context.getSystemService( Context.NOTIFICATION_SERVICE );
-        nm.notify( iconID, notification );
+            NotificationManager nm = (NotificationManager)
+                context.getSystemService( Context.NOTIFICATION_SERVICE );
+            nm.notify( iconID, notification );
+        }
     }
 
     /**

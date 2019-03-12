@@ -76,7 +76,7 @@ public class PortReg {
         onMapLoaded( context, new Runnable() {
                 @Override
                 public void run() {
-                    String[] result = null;
+                    String[] result = {};
                     Set<String> apps = sMap.get( port );
                     if ( apps != null ) {
                         result = apps.toArray( new String[apps.size()] );
