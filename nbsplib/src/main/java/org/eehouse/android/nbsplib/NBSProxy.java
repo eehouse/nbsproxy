@@ -38,7 +38,6 @@ import android.util.Log;
 
 import junit.framework.Assert;
 
-import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
 /* Rethinking things: this needs to work in the situation where one of two
@@ -63,7 +62,7 @@ import java.util.Arrays;
 
 public class NBSProxy extends BroadcastReceiver {
     private static final String TAG = NBSProxy.class.getSimpleName();
-    private static WeakReference<Callbacks> sProcRef;
+    private static Callbacks sProcs;
     private static Object sWaiter = new Object();
     private static long sWaitTime;
 
@@ -82,6 +81,7 @@ public class NBSProxy extends BroadcastReceiver {
     public static final String ACTION_CTRL = "org.eehouse.android.nbsplib.action_ctrl";
 
     private static Thread sWaitThread;
+    private static RegInfo sRegInfo;
 
     // values for EXTRA_CMD
     public static enum CTRL {
@@ -92,7 +92,7 @@ public class NBSProxy extends BroadcastReceiver {
     }
 
     public interface Callbacks {
-        void onProxyAppLaunched();
+        void onProxyAppLaunched(); // might not need this
         void onPermissionsGranted();
         void onRegResponse( boolean appReached );
         void onDataReceived( short port, String fromPhone, byte[] data );
@@ -115,34 +115,45 @@ public class NBSProxy extends BroadcastReceiver {
      * @return false if unable to contact the app because an earlier
      * registration is still waiting a response.
      */
-    public static boolean register( short port, String appID, Callbacks procs )
+    public static boolean register( Context context, short port,
+                                    String appID, Callbacks procs )
     {
-        // Caller can't just call <code>register( new Callbacks(){} )</code>
-        // or with no other reference to the proc it'll get gc'd. So force
-        // them to pass an Application that implements Callbacks. If other's
-        // use this and care, I'll address.
-        assert( procs instanceof Application );
+        sProcs = procs;
+        if ( sRegInfo != null ) {
+            Log.e(TAG, "register(): reg already pending; dropping it" );
+        }
+        sRegInfo = new RegInfo( port, appID );
+        return tryRegister( context );
+    }
 
-        boolean unique = false;
-        synchronized ( NBSProxy.class ) {
-            unique = sWaitThread == null;
-            if ( unique ) {
-                sWaitThread = startWaitThread();
+    private static boolean tryRegister( Context context )
+    {
+        Log.d( TAG, "tryRegister()" );
+        boolean result = false;
+        if ( !isInstalled( context ) ) {
+            Log.e( TAG, "tryRegister(): NBSProxy not installed; waiting..." );
+        } else if ( sRegInfo != null ) {
+            // Caller can't just call <code>register( new Callbacks(){} )</code>
+            // or with no other reference to the proc it'll get gc'd. So force
+            // them to pass an Application that implements Callbacks. If other's
+            // use this and care, I'll address.
+
+            boolean threadNotRunning = false;
+            synchronized ( NBSProxy.class ) {
+                threadNotRunning = sWaitThread == null;
+                if ( threadNotRunning ) {
+                    sWaitThread = startWaitThread();
+                }
             }
+
+            if ( threadNotRunning ) {
+                sendRegIntent( context );
+
+                startReceiver( context );
+            }
+            result = threadNotRunning;
         }
-
-        if ( unique ) {
-            Context context = (Context)procs; // as long as we're doing the assert :-)
-
-            sProcRef = new WeakReference<>( procs );
-
-            sendRegIntent( context, port, appID );
-
-            startReceiver( context );
-        }
-        Log.d( TAG, "register(" + procs + ") for appID " + appID
-                       + " => " + unique );
-        return unique;
+        return result;
     }
 
     /**
@@ -208,6 +219,7 @@ public class NBSProxy extends BroadcastReceiver {
     /**
      * Test where the actual app is installed on the device
      */
+    private static boolean sWasInstalled = false;
     public static boolean isInstalled( Context context )
     {
         boolean installed = true;
@@ -218,6 +230,13 @@ public class NBSProxy extends BroadcastReceiver {
         } catch (PackageManager.NameNotFoundException e) {
             installed = false;
         }
+
+        if ( installed && !sWasInstalled ) {
+            Log.d( TAG, "isInstalled(): first time!" );
+            sWasInstalled = true;
+            tryRegister( context );
+        }
+
         Log.d( TAG, "isInstalled() => " + installed );
         return installed;
     }
@@ -258,13 +277,11 @@ public class NBSProxy extends BroadcastReceiver {
                         Log.e( TAG, "onReceive(): missing port" );
                     } else {
                         byte[] data = Base64.decode( text, Base64.NO_WRAP );
-                        if ( sProcRef != null ) {
-                            Callbacks proc = sProcRef.get();
-                            if ( proc != null ) {
-                                Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
-                                       + phone );
-                                proc.onDataReceived( port, phone, data );
-                            }
+                        Callbacks procs = sProcs;
+                        if ( procs != null ) {
+                            Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
+                                   + phone );
+                            procs.onDataReceived( port, phone, data );
                         }
                     }
                 }
@@ -312,15 +329,17 @@ public class NBSProxy extends BroadcastReceiver {
         return result;
     }
 
-    private static void sendRegIntent( Context context, short port, String appID )
+    private static void sendRegIntent( Context context )
     {
-        Intent intent = getBaseIntent( CTRL.REG )
-            .putExtra( EXTRA_PORT, port )
-            .putExtra( EXTRA_APPID, appID )
-            .putExtra( EXTRA_REGTIME, System.currentTimeMillis() )
-            ;
-        Log.d( TAG, "sendRegIntent() sending " + intent );
-        context.sendBroadcast( intent );
+        if ( sRegInfo != null ) {
+            Intent intent = getBaseIntent( CTRL.REG )
+                .putExtra( EXTRA_PORT, sRegInfo.port )
+                .putExtra( EXTRA_APPID, sRegInfo.appID )
+                .putExtra( EXTRA_REGTIME, System.currentTimeMillis() )
+                ;
+            Log.d( TAG, "sendRegIntent() sending " + intent );
+            context.sendBroadcast( intent );
+        }
     }
 
     // Return true IFF it's a reg response and not a message to be forwarded.
@@ -339,6 +358,7 @@ public class NBSProxy extends BroadcastReceiver {
                     sWaitTime = waitTime;
                     sWaiter.notify();
                 }
+                sRegInfo = null; // don't do it again.
             }
         }
         return isRegResponse;
@@ -353,7 +373,7 @@ public class NBSProxy extends BroadcastReceiver {
                 public void onReceive( Context context, Intent intent ) {
                     Log.d( TAG, "onReceive(" + intent + ")");
                     CTRL cmd = CTRL.values()[intent.getIntExtra( EXTRA_CMD, -1 )];
-                    Callbacks procs = sProcRef.get();
+                    Callbacks procs = sProcs;
                     Log.d( TAG, "got cmd: " + cmd );
                     switch( cmd ) {
                     case PERMS_GRANTED:
@@ -363,6 +383,7 @@ public class NBSProxy extends BroadcastReceiver {
                         break;
                     case APP_LAUNCHED:
                         if ( procs != null ) {
+                            tryRegister( context );
                             procs.onProxyAppLaunched();
                         }
                         break;
@@ -387,11 +408,11 @@ public class NBSProxy extends BroadcastReceiver {
                             Log.d( TAG, "startWaitThread(): wait returned after "
                                    + (System.currentTimeMillis() - startMS) + "ms" );
                             boolean appReached = sWaitTime >= 0;
-                            if ( sProcRef != null ) {
-                                Callbacks procs = sProcRef.get();
-                                if ( procs != null ) {
-                                    procs.onRegResponse( appReached );
-                                }
+                            Callbacks procs = sProcs;
+                            if ( procs != null ) {
+                                procs.onRegResponse( appReached );
+                            } else {
+                                Log.e( TAG, "startWaitThread(): no callbacks!!" );
                             }
                         } catch ( InterruptedException ex ) {
                             Log.d( TAG, "startWaitThread(): interrupted: " +
@@ -417,5 +438,14 @@ public class NBSProxy extends BroadcastReceiver {
             .setPackage( BuildConfig.NBSPROXY_APPLICATION_ID )
             ;
         return intent;
+    }
+
+    private static class RegInfo {
+        short port;
+        String appID;
+        public RegInfo( short port, String appID ) {
+            this.port = port;
+            this.appID = appID;
+        }
     }
 }

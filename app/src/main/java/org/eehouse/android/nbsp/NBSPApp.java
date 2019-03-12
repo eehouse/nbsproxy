@@ -37,7 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import junit.framework.Assert;
 
-public class NBSPApp extends Application implements NBSProxy.Callbacks {
+public class NBSPApp extends Application {
     private static final String TAG = NBSPApp.class.getSimpleName();
     private static Map<Integer, NBSProxy.Callbacks> sProcs = new HashMap<>();
 
@@ -50,7 +50,45 @@ public class NBSPApp extends Application implements NBSProxy.Callbacks {
         // Required to support test send feature only
         Assert.assertTrue( NBSProxy.isInstalled(this) );
         short port = Short.valueOf( getString( R.string.nbsp_port ) );
-        NBSProxy.register( port, BuildConfig.APPLICATION_ID, this );
+        NBSProxy.register( this, port, BuildConfig.APPLICATION_ID,
+                           new NBSProxy.Callbacks() {
+                               @Override
+                               public void onProxyAppLaunched()
+                               {
+                                   Log.d( TAG, "onProxyAppLaunched()" );
+                               }
+
+                               @Override
+                               public void onPermissionsGranted()
+                               {
+                                   Log.d( TAG, "onPermissionsGranted()" );
+                               }
+
+                               @Override
+                               public void onRegResponse( boolean appReached )
+                               {
+                                   // There's no way this can fail: I *am* the app....
+                                   Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
+                                   if ( !appReached ) {    //  this should be impossible in the app itself
+                                       NBSProxy.postLaunchNotification( NBSPApp.this,
+                                                                        MainActivity.makeChannelID(NBSPApp.this),
+                                                                        R.mipmap.ic_launcher_round );
+                                   }
+                               }
+
+                               @Override
+                               public void onDataReceived( short port, String fromPhone, byte[] data )
+                               {
+                                   NBSProxy.Callbacks proc = sProcs.remove( Arrays.hashCode(data) );
+                                   if ( proc != null ) {
+                                       try {
+                                           proc.onDataReceived( port, fromPhone, data );
+                                       } catch ( java.lang.IllegalStateException ise ) {
+                                           // This shows when fragment's been detached. Drop it
+                                       }
+                                   }
+                               }
+                           });
 
         // Broadcast receivers for results from NBS message sends. Right now
         // we just log what happened.
@@ -69,42 +107,6 @@ public class NBSPApp extends Application implements NBSProxy.Callbacks {
         }
 
         NBSReceiver.onAppLaunched( this );
-    }
-
-    @Override
-    public void onProxyAppLaunched()
-    {
-        Log.d( TAG, "onProxyAppLaunched()" );
-    }
-
-    @Override
-    public void onPermissionsGranted()
-    {
-        Log.d( TAG, "onPermissionsGranted()" );
-    }
-
-    @Override
-    public void onRegResponse( boolean appReached )
-    {
-        // There's no way this can fail: I *am* the app....
-        Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
-        if ( !appReached ) {    //  this should be impossible in the app itself
-            NBSProxy.postLaunchNotification( this, MainActivity.makeChannelID(this),
-                                         R.mipmap.ic_launcher_round );
-        }
-    }
-
-    @Override
-    public void onDataReceived( short port, String fromPhone, byte[] data )
-    {
-        NBSProxy.Callbacks proc = sProcs.remove( Arrays.hashCode(data) );
-        if ( proc != null ) {
-            try {
-                proc.onDataReceived( port, fromPhone, data );
-            } catch ( java.lang.IllegalStateException ise ) {
-                // This shows when fragment's been detached. Drop it
-            }
-        }
     }
 
     public static void setNBSCallback( byte[] data, NBSProxy.Callbacks proc )
