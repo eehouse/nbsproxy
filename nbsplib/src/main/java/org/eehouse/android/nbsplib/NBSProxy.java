@@ -27,6 +27,7 @@ import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
@@ -78,15 +79,21 @@ public class NBSProxy extends BroadcastReceiver {
     public static final String EXTRA_ERROR_MSG = TAG + ".errmsg";
     public static final String EXTRA_CLIENTOLD = TAG + ".clientOld";
 
+    public static final String ACTION_CTRL = "org.eehouse.android.nbsplib.action_ctrl";
+
     private static Thread sWaitThread;
 
     // values for EXTRA_CMD
     public static enum CTRL {
         REG,
         SEND,
+        APP_LAUNCHED,
+        PERMS_GRANTED,
     }
 
     public interface Callbacks {
+        void onProxyAppLaunched();
+        void onPermissionsGranted();
         void onRegResponse( boolean appReached );
         void onDataReceived( short port, String fromPhone, byte[] data );
     }
@@ -130,6 +137,8 @@ public class NBSProxy extends BroadcastReceiver {
             sProcRef = new WeakReference<>( procs );
 
             sendRegIntent( context, port, appID );
+
+            startReceiver( context );
         }
         Log.d( TAG, "register(" + procs + ") for appID " + appID
                        + " => " + unique );
@@ -331,6 +340,36 @@ public class NBSProxy extends BroadcastReceiver {
             }
         }
         return isRegResponse;
+    }
+
+    private static BroadcastReceiver sReceiver;
+    private synchronized static void startReceiver( Context context )
+    {
+        if ( sReceiver == null ) {
+            sReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive( Context context, Intent intent ) {
+                    Log.d( TAG, "onReceive(" + intent + ")");
+                    CTRL cmd = CTRL.values()[intent.getIntExtra( EXTRA_CMD, -1 )];
+                    Callbacks procs = sProcRef.get();
+                    Log.d( TAG, "got cmd: " + cmd );
+                    switch( cmd ) {
+                    case PERMS_GRANTED:
+                        if ( procs != null ) {
+                            procs.onPermissionsGranted();
+                        }
+                        break;
+                    case APP_LAUNCHED:
+                        if ( procs != null ) {
+                            procs.onProxyAppLaunched();
+                        }
+                        break;
+                    }
+                }
+            };
+            IntentFilter ifltr = new IntentFilter( ACTION_CTRL );
+            context.registerReceiver( sReceiver, ifltr );
+        }
     }
 
     private static Thread startWaitThread()

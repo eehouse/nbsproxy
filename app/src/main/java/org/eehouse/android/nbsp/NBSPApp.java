@@ -29,6 +29,7 @@ import android.util.Log;
 
 import org.eehouse.android.nbsplib.NBSProxy;
 
+import org.eehouse.android.nbsp.NBSReceiver;
 import org.eehouse.android.nbsp.ui.MainActivity;
 
 import java.util.Arrays;
@@ -43,9 +44,8 @@ public class NBSPApp extends Application implements NBSProxy.Callbacks {
     @Override
     public void onCreate()
     {
+        Log.d( TAG, "onCreate()" );
         super.onCreate();
-
-        NBSProxy.isGSMPhone( this );
 
         // Required to support test send feature only
         Assert.assertTrue( NBSProxy.isInstalled(this) );
@@ -67,6 +67,20 @@ public class NBSPApp extends Application implements NBSProxy.Callbacks {
         for ( int id : new int[] {R.string.msg_sent, R.string.msg_delivered}) {
             registerReceiver( br, new IntentFilter( getString(id) ) );
         }
+
+        NBSReceiver.onAppLaunched( this );
+    }
+
+    @Override
+    public void onProxyAppLaunched()
+    {
+        Log.d( TAG, "onProxyAppLaunched()" );
+    }
+
+    @Override
+    public void onPermissionsGranted()
+    {
+        Log.d( TAG, "onPermissionsGranted()" );
     }
 
     @Override

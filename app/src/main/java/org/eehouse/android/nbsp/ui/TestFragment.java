@@ -78,6 +78,18 @@ public class TestFragment extends PageFragment {
         random.nextBytes( data );
 
         NBSPApp.setNBSCallback(data, new NBSProxy.Callbacks() {
+
+                @Override
+                public void onProxyAppLaunched()
+                {
+                    Log.d( TAG, "onProxyAppLaunched()" );
+                }
+                @Override
+                public void onPermissionsGranted()
+                {
+                    Log.d( TAG, "onPermissionsGranted()" );
+                }
+
                 @Override
                 public void onRegResponse( boolean appReached )
                 {

@@ -21,6 +21,7 @@ package org.eehouse.android.nbsp.ui;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
@@ -34,6 +35,7 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 
 import org.eehouse.android.nbsp.BuildConfig;
+import org.eehouse.android.nbsp.NBSReceiver;
 import org.eehouse.android.nbsp.R;
 
 public class PermsFragment extends PageFragment {
@@ -110,6 +112,11 @@ public class PermsFragment extends PageFragment {
     {
         if (requestCode == PERMISSIONS_REQUEST) {
             recheckCheck();
+
+            Activity activity = getActivity();
+            if ( activity != null && havePermissions( activity ) ) {
+                NBSReceiver.onPermissionsGained( activity );
+            }
         }
     }
 }

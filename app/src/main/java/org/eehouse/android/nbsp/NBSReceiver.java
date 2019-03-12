@@ -115,6 +115,26 @@ public class NBSReceiver extends BroadcastReceiver {
             } );
     }
 
+    public static void onAppLaunched( Context context )
+    {
+        Log.d( TAG, "onAppLaunched()" );
+        sendCtrlIntent( context, NBSProxy.CTRL.APP_LAUNCHED );
+    }
+
+    public static void onPermissionsGained( Context context )
+    {
+        sendCtrlIntent( context, NBSProxy.CTRL.PERMS_GRANTED );
+    }
+
+    private static void sendCtrlIntent( Context context, NBSProxy.CTRL cmd )
+    {
+        Intent intent = new Intent()
+            .setAction( NBSProxy.ACTION_CTRL )
+            .putExtra( NBSProxy.EXTRA_CMD, cmd.ordinal() )
+            ;
+        context.sendOrderedBroadcast( intent, null );
+    }
+
     public static Intent makeRXIntent( String appID )
     {
         Intent rxIntent = new Intent()
