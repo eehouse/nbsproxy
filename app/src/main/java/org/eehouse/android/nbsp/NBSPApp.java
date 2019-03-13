@@ -50,45 +50,47 @@ public class NBSPApp extends Application {
         // Required to support test send feature only
         Assert.assertTrue( NBSProxy.isInstalled(this) );
         short port = Short.valueOf( getString( R.string.nbsp_port ) );
-        NBSProxy.register( this, port, BuildConfig.APPLICATION_ID,
-                           new NBSProxy.Callbacks() {
-                               @Override
-                               public void onProxyAppLaunched()
-                               {
-                                   Log.d( TAG, "onProxyAppLaunched()" );
-                               }
+        NBSProxy
+            .register( this, port, BuildConfig.APPLICATION_ID,
+                       new NBSProxy.Callbacks() {
+                           @Override
+                           public void onProxyAppLaunched()
+                           {
+                               Log.d( TAG, "onProxyAppLaunched()" );
+                           }
 
-                               @Override
-                               public void onPermissionsGranted()
-                               {
-                                   Log.d( TAG, "onPermissionsGranted()" );
-                               }
+                           @Override
+                           public void onPermissionsGranted()
+                           {
+                               Log.d( TAG, "onPermissionsGranted()" );
+                           }
 
-                               @Override
-                               public void onRegResponse( boolean appReached )
-                               {
-                                   // There's no way this can fail: I *am* the app....
-                                   Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
-                                   if ( !appReached ) {    //  this should be impossible in the app itself
-                                       NBSProxy.postLaunchNotification( NBSPApp.this,
-                                                                        MainActivity.makeChannelID(NBSPApp.this),
-                                                                        R.mipmap.ic_launcher_round );
+                           @Override
+                           public void onRegResponse( boolean appReached, boolean needsInitialLaunch )
+                           {
+                               // There's no way this can fail: I *am* the app....
+                               Log.d( TAG, "onRegResponse(appReached=" + appReached + ")");
+                               if ( needsInitialLaunch ) {    //  this should be impossible in the app itself
+                                   NBSProxy
+                                       .postLaunchNotification( NBSPApp.this,
+                                                                MainActivity.makeChannelID(NBSPApp.this),
+                                                                R.mipmap.ic_launcher_round );
+                               }
+                           }
+
+                           @Override
+                           public void onDataReceived( short port, String fromPhone, byte[] data )
+                           {
+                               NBSProxy.Callbacks proc = sProcs.remove( Arrays.hashCode(data) );
+                               if ( proc != null ) {
+                                   try {
+                                       proc.onDataReceived( port, fromPhone, data );
+                                   } catch ( java.lang.IllegalStateException ise ) {
+                                       // This shows when fragment's been detached. Drop it
                                    }
                                }
-
-                               @Override
-                               public void onDataReceived( short port, String fromPhone, byte[] data )
-                               {
-                                   NBSProxy.Callbacks proc = sProcs.remove( Arrays.hashCode(data) );
-                                   if ( proc != null ) {
-                                       try {
-                                           proc.onDataReceived( port, fromPhone, data );
-                                       } catch ( java.lang.IllegalStateException ise ) {
-                                           // This shows when fragment's been detached. Drop it
-                                       }
-                                   }
-                               }
-                           });
+                           }
+                       });
 
         // Broadcast receivers for results from NBS message sends. Right now
         // we just log what happened.

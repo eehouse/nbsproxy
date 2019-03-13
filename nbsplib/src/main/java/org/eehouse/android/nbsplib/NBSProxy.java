@@ -19,8 +19,6 @@
 
 package org.eehouse.android.nbsplib;
 
-import android.Manifest;
-import android.app.Application;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -28,8 +26,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.support.v4.app.NotificationCompat;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -37,8 +35,6 @@ import android.util.Base64;
 import android.util.Log;
 
 import junit.framework.Assert;
-
-import java.util.Arrays;
 
 /* Rethinking things: this needs to work in the situation where one of two
  * communicating devices has it installed and the other doesn't.
@@ -64,7 +60,9 @@ public class NBSProxy extends BroadcastReceiver {
     private static final String TAG = NBSProxy.class.getSimpleName();
     private static Callbacks sProcs;
     private static Object sWaiter = new Object();
-    private static long sWaitTime;
+
+    private static String sClientAppID;
+    private static final String TAG() { return TAG + "_" + sClientAppID; }
 
     // Keys for passing stuff around in intents.
     public static final String EXTRA_VERSION = TAG + ".version";
@@ -80,11 +78,18 @@ public class NBSProxy extends BroadcastReceiver {
 
     public static final String ACTION_CTRL = "org.eehouse.android.nbsplib.action_ctrl";
 
+    // How long we wait for reg response before suspecting that the NBSProxy
+    // app needs the user to launch it manually for the critical first time in
+    // order that it start being delivered Intents for which its Manifest
+    // registers it.
+    private static final long REG_WAIT_MILLIS = 1000 * 20;
+
     private static Thread sWaitThread;
     private static RegInfo sRegInfo;
+    private static boolean sIsRegistered;
 
     // values for EXTRA_CMD
-    public static enum CTRL {
+    public enum CTRL {
         REG,
         SEND,
         APP_LAUNCHED,
@@ -94,7 +99,7 @@ public class NBSProxy extends BroadcastReceiver {
     public interface Callbacks {
         void onProxyAppLaunched(); // might not need this
         void onPermissionsGranted();
-        void onRegResponse( boolean appReached );
+        void onRegResponse( boolean appReached, boolean needsInitialLaunch );
         void onDataReceived( short port, String fromPhone, byte[] data );
     }
 
@@ -104,7 +109,12 @@ public class NBSProxy extends BroadcastReceiver {
      * called), this allows you to register the callback that will receive the
      * data in each incoming message.
      *
-     * @param proc reference to your callback that <em>MUST</em> be an
+     * @param port NBS port on which to receive data
+     *
+     * @param appID application id (e.g. org.eehouse.android.nbsp) of your
+     * app, and to which data will be delivered.
+     *
+     * @param procs reference to your callback that <em>MUST</em> be an
      * Application instance that implements NBSProxy.Callbacks. That's to
      * force you to pass something that won't be gc'd prematurely, which in
      * turn lets me store it in a WeakReference that won't cause any leaks.
@@ -118,9 +128,10 @@ public class NBSProxy extends BroadcastReceiver {
     public static boolean register( Context context, short port,
                                     String appID, Callbacks procs )
     {
+        sClientAppID = appID;
         sProcs = procs;
         if ( sRegInfo != null ) {
-            Log.e(TAG, "register(): reg already pending; dropping it" );
+            Log.e(TAG(), "register(): reg already pending; dropping it" );
         }
         sRegInfo = new RegInfo( port, appID );
         return tryRegister( context );
@@ -128,11 +139,11 @@ public class NBSProxy extends BroadcastReceiver {
 
     private static boolean tryRegister( Context context )
     {
-        Log.d( TAG, "tryRegister()" );
+        Log.d( TAG(), "tryRegister()" );
         boolean result = false;
-        if ( !isInstalled( context ) ) {
-            Log.e( TAG, "tryRegister(): NBSProxy not installed; waiting..." );
-        } else if ( sRegInfo != null ) {
+        if ( !isInstalledImpl( context ) ) {
+            Log.e( TAG(), "tryRegister(): NBSProxy not installed; later..." );
+        } else if ( !sIsRegistered && sRegInfo != null ) {
             // Caller can't just call <code>register( new Callbacks(){} )</code>
             // or with no other reference to the proc it'll get gc'd. So force
             // them to pass an Application that implements Callbacks. If other's
@@ -142,7 +153,7 @@ public class NBSProxy extends BroadcastReceiver {
             synchronized ( NBSProxy.class ) {
                 threadNotRunning = sWaitThread == null;
                 if ( threadNotRunning ) {
-                    sWaitThread = startWaitThread();
+                    sWaitThread = startWaitThread( context );
                 }
             }
 
@@ -196,13 +207,13 @@ public class NBSProxy extends BroadcastReceiver {
      * sends data to app on remote device. Size limit of around 140 bytes.
      *
      * @param phone number of device to send to
-     * @param appID appID of app to deliver to on remote device
+     * @param port NBS port at which to deliver on remote device
      * @param data binary data to be transmitted
     */
     public static void send( Context context, String phone,
                              short port, byte[] data )
     {
-        Log.d( TAG, "given data of len " + data.length
+        Log.d( TAG(), "given data of len " + data.length
                + " to send on port " + port );
         String asStr = Base64.encodeToString( data, Base64.NO_WRAP );
 
@@ -213,31 +224,58 @@ public class NBSProxy extends BroadcastReceiver {
             .putExtra( EXTRA_PORT, port )
             ;
         context.sendBroadcast( intent );
-        Log.d( TAG, "launching intent " + intent + " at: org.eehouse.android.nbsp" );
+        Log.d( TAG(), "launching intent " + intent + " at: org.eehouse.android.nbsp" );
     }
 
     /**
      * Test where the actual app is installed on the device
      */
     private static boolean sWasInstalled = false;
-    public static boolean isInstalled( Context context )
+
+    private static long getInstallTime( Context context )
     {
-        boolean installed = true;
+        long result = 0;
         String name = BuildConfig.NBSPROXY_APPLICATION_ID;
         PackageManager pm = context.getPackageManager();
         try {
-            pm.getPackageInfo( name, 0 );
-        } catch (PackageManager.NameNotFoundException e) {
-            installed = false;
+            PackageInfo pi = pm.getPackageInfo( name, 0 );
+            result = pi.firstInstallTime;
+        } catch (PackageManager.NameNotFoundException | NullPointerException e) {
+        }
+
+        Log.d( TAG(), "getInstallTime() => " + result + " ("
+               + (System.currentTimeMillis() - result) / 1000 + " seconds ago)" );
+        return result;
+    }
+
+    /**
+     *
+     * @param context You know what this is.
+     *
+     * @return whether the PackageManager thinks the NBSProxy app is
+     * installed.
+     */
+    public static boolean isInstalled( Context context )
+    {
+        boolean installed = isInstalledImpl( context );
+        if ( !installed ) {
+            sIsRegistered = false;
         }
 
         if ( installed && !sWasInstalled ) {
-            Log.d( TAG, "isInstalled(): first time!" );
-            sWasInstalled = true;
+            Log.d( TAG(), "isInstalled(): first time!" );
             tryRegister( context );
         }
+        sWasInstalled = installed;
 
-        Log.d( TAG, "isInstalled() => " + installed );
+        Log.d( TAG(), "isInstalled() => " + installed );
+        return installed;
+    }
+
+    private static boolean isInstalledImpl( Context context )
+    {
+        boolean installed = getInstallTime( context ) > 0;
+        Log.d( TAG(), "isInstalledImpl() => " + installed );
         return installed;
     }
 
@@ -250,17 +288,19 @@ public class NBSProxy extends BroadcastReceiver {
             int type = mgr.getPhoneType();
             result = TelephonyManager.PHONE_TYPE_GSM == type;
         }
-        Log.d( TAG, "isGSMPhone() => " + result );
+        Log.d( TAG(), "isGSMPhone() => " + result );
         return result;
     }
 
     @Override
     public void onReceive( Context context, Intent intent )
     {
-        Log.d( TAG, "onReceive()" );
+        Log.d( TAG(), "onReceive()" );
         if ( intent != null
              && Intent.ACTION_SEND.equals(intent.getAction())
              && "text/nbsdata_rx".equals( intent.getType() ) ) {
+
+            persistReceiveTime( context );
 
             if ( 0 == versionOk( intent ) ) {
                 if ( handleRegResponse( context, intent ) ) {
@@ -270,16 +310,16 @@ public class NBSProxy extends BroadcastReceiver {
                     String phone = intent.getStringExtra( EXTRA_PHONE );
                     short port = intent.getShortExtra( EXTRA_PORT, (short)-1 );
                     if ( text == null ) {
-                        Log.e( TAG, "onReceive(): null text" );
+                        Log.e( TAG(), "onReceive(): null text" );
                     } else if ( phone == null ) {
-                        Log.e( TAG, "onReceive(): null phone" );
+                        Log.e( TAG(), "onReceive(): null phone" );
                     } else if ( port == -1 ) {
-                        Log.e( TAG, "onReceive(): missing port" );
+                        Log.e( TAG(), "onReceive(): missing port" );
                     } else {
                         byte[] data = Base64.decode( text, Base64.NO_WRAP );
                         Callbacks procs = sProcs;
                         if ( procs != null ) {
-                            Log.d( TAG, "onReceive(): passing " + data.length + " bytes from "
+                            Log.d( TAG(), "onReceive(): passing " + data.length + " bytes from "
                                    + phone );
                             procs.onDataReceived( port, phone, data );
                         }
@@ -324,7 +364,7 @@ public class NBSProxy extends BroadcastReceiver {
                 }
             }
         }
-        // Log.d( TAG, "versionsOk(other: " + version + ", me: "
+        // Log.d( TAG(), "versionsOk(other: " + version + ", me: "
         //        + BuildConfig.NBSP_VERSION + ") => " + result);
         return result;
     }
@@ -337,7 +377,7 @@ public class NBSProxy extends BroadcastReceiver {
                 .putExtra( EXTRA_APPID, sRegInfo.appID )
                 .putExtra( EXTRA_REGTIME, System.currentTimeMillis() )
                 ;
-            Log.d( TAG, "sendRegIntent() sending " + intent );
+            Log.d( TAG(), "sendRegIntent() sending " + intent );
             context.sendBroadcast( intent );
         }
     }
@@ -351,14 +391,13 @@ public class NBSProxy extends BroadcastReceiver {
             long respTime = intent.getLongExtra( NBSProxy.EXTRA_REGRESPTIME, -1 );
             if ( respTime != -1 ) {
                 isRegResponse = true;
+                sIsRegistered = true;
 
                 long waitTime = System.currentTimeMillis() - regTime;
-                Log.d( TAG, "got regResponse; round trip took " + waitTime + "ms" );
+                Log.d( TAG(), "got regResponse; round trip took " + waitTime + "ms" );
                 synchronized ( sWaiter ) {
-                    sWaitTime = waitTime;
                     sWaiter.notify();
                 }
-                sRegInfo = null; // don't do it again.
             }
         }
         return isRegResponse;
@@ -371,10 +410,10 @@ public class NBSProxy extends BroadcastReceiver {
             sReceiver = new BroadcastReceiver() {
                 @Override
                 public void onReceive( Context context, Intent intent ) {
-                    Log.d( TAG, "onReceive(" + intent + ")");
+                    Log.d( TAG(), "onReceive(" + intent + ")");
                     CTRL cmd = CTRL.values()[intent.getIntExtra( EXTRA_CMD, -1 )];
                     Callbacks procs = sProcs;
-                    Log.d( TAG, "got cmd: " + cmd );
+                    Log.d( TAG(), "got cmd: " + cmd );
                     switch( cmd ) {
                     case PERMS_GRANTED:
                         if ( procs != null ) {
@@ -395,33 +434,42 @@ public class NBSProxy extends BroadcastReceiver {
         }
     }
 
-    private static Thread startWaitThread()
+    private static Thread startWaitThread( final Context context )
     {
-        final long startMS = System.currentTimeMillis();
+        Log.d( TAG(), "startWaitThread()" );
         Thread result = new Thread( new Runnable() {
                 @Override
                 public void run() {
+                    Log.d( TAG(), "startWaitThread.run()" );
                     synchronized ( sWaiter ) {
-                        sWaitTime = -1;
                         try {
-                            sWaiter.wait( 20 * 1000 ); // wait 20 seconds
-                            Log.d( TAG, "startWaitThread(): wait returned after "
-                                   + (System.currentTimeMillis() - startMS) + "ms" );
-                            boolean appReached = sWaitTime >= 0;
+                            long startMS = System.currentTimeMillis();
+                            sWaiter.wait( REG_WAIT_MILLIS );
+                            long tookMillis = System.currentTimeMillis() - startMS;
+                            Log.d( TAG(), "startWaitThread(appID=" + sRegInfo.appID
+                                   + "): wait returned after " + tookMillis + "ms" );
                             Callbacks procs = sProcs;
                             if ( procs != null ) {
-                                procs.onRegResponse( appReached );
+                                boolean appReached = tookMillis < REG_WAIT_MILLIS;
+                                boolean needsInitialLaunch =
+                                    getInstallTime( context ) > getReceiveTime( context );
+                                // the app can't need launching if we reached it!
+                                Assert.assertTrue( !needsInitialLaunch || !appReached );
+                                Log.d( TAG(), "calling onRegResponse(appReached=" + appReached
+                                       + ", needsInitialLaunch=" + needsInitialLaunch + ")");
+                                procs.onRegResponse( appReached, needsInitialLaunch );
                             } else {
-                                Log.e( TAG, "startWaitThread(): no callbacks!!" );
+                                Log.e( TAG(), "startWaitThread(): no callbacks!!" );
                             }
                         } catch ( InterruptedException ex ) {
-                            Log.d( TAG, "startWaitThread(): interrupted: " +
+                            Log.d( TAG(), "startWaitThread(): interrupted: " +
                                    ex.getMessage() );
                         }
                     }
                     synchronized ( NBSProxy.class ) {
                         sWaitThread = null;
                     }
+                    Log.d( TAG(), "startWaitThread.run() DONE" );
                 }
             } );
         result.start();
@@ -438,6 +486,30 @@ public class NBSProxy extends BroadcastReceiver {
             .setPackage( BuildConfig.NBSPROXY_APPLICATION_ID )
             ;
         return intent;
+    }
+
+    // We want to remember when we've received data, which means the NBSProxy
+    // application is able to communicate. Until that time we might need to
+    // prompt the user to launch it so it can start receiving intents.
+    private static final String HIDDEN_PREFS = TAG + ".nbsp_hidden";
+    private static final String KEY_RECEIVE_STAMP = TAG + ".receiveStamp";
+    private static void persistReceiveTime( Context context )
+    {
+        long stamp = System.currentTimeMillis();
+        context.getSharedPreferences( HIDDEN_PREFS, Context.MODE_PRIVATE )
+            .edit()
+            .putLong( KEY_RECEIVE_STAMP, stamp )
+            .apply()
+            ;
+    }
+
+    private static long getReceiveTime( Context context )
+    {
+        long result = context
+            .getSharedPreferences( HIDDEN_PREFS, Context.MODE_PRIVATE )
+            .getLong( KEY_RECEIVE_STAMP, 0);
+        Log.d( TAG(), "getReceiveTime() => " + result );
+        return result;
     }
 
     private static class RegInfo {

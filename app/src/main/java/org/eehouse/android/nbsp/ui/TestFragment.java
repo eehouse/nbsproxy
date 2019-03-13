@@ -91,15 +91,12 @@ public class TestFragment extends PageFragment {
                 }
 
                 @Override
-                public void onRegResponse( boolean appReached )
+                public void onRegResponse( boolean appReached, boolean needsInitialLaunch )
                 {
-                    assert( appReached );
                 }
 
                 @Override
-                public void onDataReceived( short port,
-                                            String fromPhone,
-                                            byte[] dataIn )
+                public void onDataReceived( short port, String fromPhone, byte[] dataIn )
                 {
                     if ( Arrays.equals( data, dataIn ) ) {
                         long elapsedMS = System.currentTimeMillis() - startTime;
