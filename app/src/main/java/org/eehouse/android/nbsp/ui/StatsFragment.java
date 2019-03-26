@@ -24,9 +24,10 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
 
-import org.eehouse.android.nbsp.R;
-import org.eehouse.android.nbsp.StatsDB;
 import org.eehouse.android.nbsp.PortReg;
+import org.eehouse.android.nbsp.R;
+import org.eehouse.android.nbsp.StatsDB.HourRecord;
+import org.eehouse.android.nbsp.StatsDB;
 
 import java.util.List;
 
@@ -51,9 +52,9 @@ public class StatsFragment extends PageFragment {
 
     private void refresh()
     {
-        StatsDB.get(getActivity(), new StatsDB.OnHaveWeekRecords() {
+        StatsDB.get(getActivity(), new StatsDB.OnHaveHourRecords() {
                 @Override
-                public void onHaveData( List<StatsDB.WeekRecord> data )
+                public void onHaveData( StatsDB.IOData data )
                 {
                     // Let's run this in its own thread. Not sure how long all
                     // these callbacks will take.
@@ -62,44 +63,42 @@ public class StatsFragment extends PageFragment {
             } );
     }
 
-    private class RefresherThread extends Thread {
-        private List<StatsDB.WeekRecord> mData;
+    private final static int[] TITLES = {
+        R.string.stats_col_one,
+        R.string.stats_col_two,
+        R.string.stats_col_three,
+    };
 
-        RefresherThread( List<StatsDB.WeekRecord> data ) { mData = data; }
+    private class RefresherThread extends Thread {
+        private StatsDB.IOData mData;
+
+        RefresherThread( StatsDB.IOData data ) { mData = data; }
 
         @Override
         public void run() {
             final Activity activity = getActivity();
             final StringBuilder sb = new StringBuilder();
 
-            for ( final StatsDB.WeekRecord rec : mData ) {
-                short port = rec.getPort();
-                PortReg.lookup( activity, port,
-                                new PortReg.OnHaveAppIDs() {
-                                    @Override
-                                    public void haveAppIDs( String[] appIDs )
-                                    {
-                                        String appStr;
-                                        for ( int ii = 0; ii < appIDs.length; ++ii ) {
-                                            appIDs[ii] = PortReg
-                                                .nameFor( getActivity(), appIDs[ii] );
-                                        }
-                                        if ( appIDs.length == 1 ) { // the common case
-                                            sb.append( "app: " ).append( appIDs[0] );
-                                        } else {
-                                            sb.append( "apps: [" )
-                                                .append( TextUtils.join(",",appIDs) )
-                                                .append(']');
-                                        }
-                                        sb.append( ": " ).append( rec ).append('\n');
-                                    }
-                                } );
+            for ( short port : mData.keys() ) {
+                String app = mData.appNameFor( port );
+                sb.append("app: ")
+                    .append(PortReg.nameFor(getActivity(), app ))
+                    .append( "; port: ").append(port)
+                    .append("\n");
+
+                HourRecord[] recs = mData.get( port );
+                for ( int ii = 0; recs != null && ii < recs.length; ++ii ) {
+                    sb.append(getString(TITLES[ii])).append(" ")
+                        .append(recs[ii].stats())
+                        .append("\n");
+                }
+                sb.append("\n");
             }
 
             activity.runOnUiThread( new Runnable() {
                     @Override
                     public void run() {
-                        mTextView.setText( sb.toString() );
+                        mTextView.setText(sb.toString());
                     }
                 } );
         } // run

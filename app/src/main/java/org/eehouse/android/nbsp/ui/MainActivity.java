@@ -47,6 +47,8 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 
+import java.util.Map;
+
 import org.eehouse.android.nbsp.PortReg;
 import org.eehouse.android.nbsp.R;
 import org.eehouse.android.nbsp.ui.PageFragment;
@@ -151,12 +153,13 @@ public class MainActivity extends AppCompatActivity {
         showAlert( AlertType.VERS_MISMATCH, msg );
     }
 
-    private void showNoPermsAlert( short port )
+    private void showNoPermsAlert( final short port )
     {
-        PortReg.lookup( this, port, new PortReg.OnHaveAppIDs() {
+        PortReg.lookup( this, new short[] {port}, new PortReg.OnHaveAppIDs() {
                 @Override
-                public void haveAppIDs( String[] appIDs ) {
-                    String name = PortReg.nameFor( MainActivity.this, appIDs[0] );
+                public void haveAppIDs( Map<Short, String[]> appIDs ) {
+                    String name = PortReg.nameFor( MainActivity.this,
+                                                   appIDs.get(port)[0] );
                     final String msg
                         = getString( R.string.alert_msg_need_perms_fmt, name,
                                      getString(R.string.perms_button_label) );

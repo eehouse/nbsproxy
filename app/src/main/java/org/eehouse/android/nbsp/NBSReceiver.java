@@ -87,16 +87,16 @@ public class NBSReceiver extends BroadcastReceiver {
         Log.i( TAG, "got " + clientData.length + " bytes from " + phone
                + " on port " + port );
 
-        PortReg.lookup( context, port, new PortReg.OnHaveAppIDs() {
+        PortReg.lookup( context, new short[] {port}, new PortReg.OnHaveAppIDs() {
                 @Override
                 // this will be run in the DB's thread!
-                public void haveAppIDs( String[] appIDs ) {
-                    if ( appIDs == null || appIDs.length == 0 ) {
+                public void haveAppIDs( Map<Short, String[]> appIDs ) {
+                    if ( appIDs == null || appIDs.size() == 0 ) {
                         Log.e( TAG, "no app registered for port " + port );
                     } else {
                         String asStr = Base64.encodeToString( clientData,
                                                               Base64.NO_WRAP );
-                        for ( String appID : appIDs ) {
+                        for ( String appID : appIDs.get(port) ) {
                             try {
                                 Intent intent = makeRXIntent( appID )
                                     .putExtra( Intent.EXTRA_TEXT, asStr )

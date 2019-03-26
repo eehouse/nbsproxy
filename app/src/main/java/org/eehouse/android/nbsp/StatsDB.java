@@ -36,7 +36,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -63,17 +65,17 @@ public class StatsDB {
      * Class that stores all data for a single appID for a week. If week == 0,
      * it represents all time prior to numbered weeks.
      */
-    public static class WeekRecord implements Serializable {
+    public static class HourRecord implements Serializable {
         short port;
         long bytesTX;
         int countTX;
         long bytesRX;
         int countRX;
-        long week;           // weeks since the epoch
+        long hour;           // hours since the epoch
 
-        WeekRecord( short port ) { this.port = port; }
+        HourRecord( short port ) { this.port = port; }
 
-        WeekRecord( short port, boolean isTX, int len )
+        HourRecord( short port, boolean isTX, int len )
         {
             this( port );
             if (isTX) {
@@ -83,7 +85,7 @@ public class StatsDB {
                 countRX = 1;
                 bytesRX = len;
             }
-            week = nowAsWeek();
+            hour = nowAsHour();
         }
 
         @Override
@@ -94,6 +96,13 @@ public class StatsDB {
                          port, countRX, bytesRX, countTX, bytesTX );
         }
 
+        public String stats()
+        {
+            return String
+                .format( "count in: %d, bytes in: %d, count out: %d, bytes out: %d",
+                         countRX, bytesRX, countTX, bytesTX );
+        }
+
         public short getPort() { return port; }
 
         /**
@@ -102,31 +111,79 @@ public class StatsDB {
          */
         String getKey()
         {
-            Assert.assertTrue( week > 0 );
-            return String.format( "WeekRecord:%d:%d", week, port );
+            Assert.assertTrue( hour > 0 );
+            return String.format( "HourRecord:%d:%d", hour, port );
         }
 
         static String keyPattern()
         {
-            return "WeekRecord:%:%";
+            return "HourRecord:%:%";
         }
 
-        void append( WeekRecord other )
+        void append( HourRecord other )
         {
             Assert.assertTrue( port == other.port );
-            Assert.assertTrue( week == 0 || week == other.week );
+            Assert.assertTrue( hour == 0 || hour == other.hour );
             bytesTX += other.bytesTX;
             countTX += other.countTX;
             bytesRX += other.bytesRX;
             countRX += other.countRX;
         }
 
-        private long nowAsWeek() { return System.currentTimeMillis() / (1000 * 60 * 60 * 24 * 7); }
+        private static long nowAsHour() { return System.currentTimeMillis() / (1000 * 60 * 60); }
+        private static long weekAgoAsHour() { return nowAsHour() - (24 * 7); }
+    }
+
+    public static class IOData {
+        private Map<Short, HourRecord[]> mMap = new HashMap<>();
+        private Map<Short, String> mNames = new HashMap<>();
+        private long mThisHour = HourRecord.nowAsHour();
+        private long mLastWeek = HourRecord.weekAgoAsHour();
+
+        @Override
+        public String toString()
+        {
+            return "{" + TextUtils.join(",", mMap.keySet()) + "}";
+        }
+
+        public int size() { return mMap.size(); }
+
+        public Short[] keys() { return mMap.keySet().toArray( new Short[size()] ); }
+
+        public String appNameFor( short port ) { return mNames.get(port); }
+
+        public HourRecord[] get( short key ) { return mMap.get( key ); }
+
+        private void setAppName( short port, String appName )
+        {
+            mNames.put( port, appName );
+        }
+
+        public void add( HourRecord hour )
+        {
+            if ( ! mMap.containsKey( hour.port ) ) {
+                HourRecord[] recs = new HourRecord[3];
+                mMap.put( hour.port, recs );
+                for ( int ii = 0; ii < recs.length; ++ii ) {
+                    recs[ii] = new HourRecord( hour.port );
+                }
+            }
+
+            HourRecord[] recs = mMap.get( hour.port );
+            if ( hour.hour == mThisHour ) {
+                recs[0] = hour;
+            }
+            if ( hour.hour >= mLastWeek ) {
+                recs[1].append( hour );
+            }
+
+            recs[2].append( hour );
+        }
     }
 
     private static class DataRequest {
-        OnHaveWeekRecords proc;
-        DataRequest( OnHaveWeekRecords proc ) { this.proc = proc; }
+        OnHaveHourRecords proc;
+        DataRequest( OnHaveHourRecords proc ) { this.proc = proc; }
     }
 
     private static class StringRequest {
@@ -153,14 +210,14 @@ public class StatsDB {
     public static void record( Context context, boolean isTX, short port, int datalen )
     {
         Assert.assertTrue( port > 0 );
-        WeekRecord rec = new WeekRecord( port, isTX, datalen );
+        HourRecord rec = new HourRecord( port, isTX, datalen );
         Carrier entry = new Carrier( context, rec );
         Log.d( TAG, "record(port: " + port + ", in: " + isTX + ", len: " + datalen + ")" );
         add( entry );
     }
 
-    public interface OnHaveWeekRecords {
-        void onHaveData( List<WeekRecord> data );
+    public interface OnHaveHourRecords {
+        void onHaveData( IOData data );
     }
 
     public interface OnHaveString {
@@ -222,7 +279,7 @@ public class StatsDB {
         add( new Carrier( context, request ) );
     }
 
-    public static void get( Context context, OnHaveWeekRecords proc )
+    public static void get( Context context, OnHaveHourRecords proc )
     {
         DataRequest request = new DataRequest( proc );
         add( new Carrier( context, request ) );
@@ -261,7 +318,6 @@ public class StatsDB {
                     if ( carrier == null ) {
                         break;
                     }
-                    Log.d( TAG, "processing: " + carrier );
                     process( carrier );
                 } catch ( InterruptedException ie ) {
                     break;
@@ -282,11 +338,11 @@ public class StatsDB {
 
             Object obj = carrier.rec;
             if ( obj instanceof DataRequest ) {
-                doQuery( (DataRequest)obj );
+                doQuery( carrier.context, (DataRequest)obj );
             } else if ( obj instanceof StringRequest ) {
                 doQuery( (StringRequest)obj );
-            } else if ( obj instanceof WeekRecord ) {
-                addToTable( (WeekRecord)obj );
+            } else if ( obj instanceof HourRecord ) {
+                addToTable( (HourRecord)obj );
             } else if ( obj instanceof KVPair ) {
                 addToTable( (KVPair)obj );
             } else {
@@ -294,11 +350,11 @@ public class StatsDB {
             }
         }
 
-        private void addToTable( WeekRecord entry )
+        private void addToTable( HourRecord entry )
         {
             // If there's an entry, append. Otherwise create a new one
             String key = entry.getKey();
-            WeekRecord curRecord = getRecord( key );
+            HourRecord curRecord = getRecord( key );
             if ( curRecord != null ) {
                 curRecord.append( entry );
             } else {
@@ -312,9 +368,9 @@ public class StatsDB {
             put( pair.key, pair.val );
         }
 
-        private WeekRecord getRecord( String key )
+        private HourRecord getRecord( String key )
         {
-            WeekRecord result = null;
+            HourRecord result = null;
             String record = get( key );
             if ( record != null ) {
                 result = strToRec( record );
@@ -323,7 +379,7 @@ public class StatsDB {
             return result;
         }
 
-        private void putRecord( WeekRecord val )
+        private void putRecord( HourRecord val )
         {
             try {
                 ByteArrayOutputStream bas = new ByteArrayOutputStream();
@@ -342,14 +398,14 @@ public class StatsDB {
 
         }
 
-        private WeekRecord strToRec( String asStr )
+        private HourRecord strToRec( String asStr )
         {
-            WeekRecord result = null;
+            HourRecord result = null;
             byte[] bytes = Base64.decode( asStr, Base64.NO_WRAP );
             try {
                 ObjectInputStream ois =
                     new ObjectInputStream( new ByteArrayInputStream(bytes) );
-                result = (WeekRecord)ois.readObject();
+                result = (HourRecord)ois.readObject();
             } catch ( Exception ex ) {
                 Log.d( TAG, "strToRec(): " + ex.getMessage() );
             }
@@ -387,29 +443,50 @@ public class StatsDB {
             Log.d( TAG, "put(" + key + ") => " + result );
         }
 
-        private void doQuery( DataRequest entry )
+        private void doQuery( final Context context, final DataRequest entry )
         {
-            List<WeekRecord> weeks = new ArrayList<>();
+            final IOData result = new IOData();
 
-            String selection = String.format( "KEY LIKE '%s'", WeekRecord.keyPattern() );
+            String selection = String.format( "KEY LIKE '%s'", HourRecord.keyPattern() );
             String[] columns = { "KEY", "VALUE" };
 
-            Cursor cursor = mDb.query( TABLE_NAME, columns, selection, null, null, null, null );
+            Cursor cursor = mDb.query( TABLE_NAME, columns, selection, null, null,
+                                       null, null );
             int indxVal = cursor.getColumnIndex( "VALUE" );
             int indxKey = cursor.getColumnIndex( "KEY" );
             while ( cursor.moveToNext() ) {
                 String asStr = cursor.getString( indxVal );
-                WeekRecord week = strToRec( asStr );
-                if ( week == null ) {
+                HourRecord hour = strToRec( asStr );
+                if ( hour == null ) {
                     String key = cursor.getString( indxKey );
-                    Log.e( TAG, "tossing week for " + key );
+                    Log.e( TAG, "tossing hour for " + key );
                 } else {
-                    weeks.add( week );
+                    result.add( hour );
                 }
             }
             cursor.close();
 
-            entry.proc.onHaveData( weeks );
+            // Now translate the ports and make callback
+            final short[] ports = new short[result.size()];
+            int ii = 0;
+            for ( short port : result.keys() ) {
+                ports[ii++] = port;
+            }
+
+            PortReg.lookup( context, ports, new PortReg.OnHaveAppIDs() {
+                    @Override
+                    public void haveAppIDs( Map<Short, String[]> appIDs ) {
+                        for ( short port : ports ) {
+                            String[] appIdsFor = appIDs.get( port );
+                            if ( appIdsFor != null ) {
+                                result.setAppName( port, appIdsFor[0] );
+                            } else {
+                                Log.d( TAG, "null for port " + port );
+                            }
+                        }
+                        entry.proc.onHaveData( result );
+                    }
+                } );
         }
 
         private void doQuery( StringRequest entry )

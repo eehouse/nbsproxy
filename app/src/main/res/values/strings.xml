@@ -81,4 +81,9 @@
     app \"%1$s\" and NBSProxy are incompatible. %2$s appears to be
     older and probably needs to be upgraded.</string>
 
+    <!-- "column" titles in the stats output -->
+    <string name="stats_col_one">This hour:</string>
+    <string name="stats_col_two">Past week:</string>
+    <string name="stats_col_three">Lifetime:</string>
+
 </resources>

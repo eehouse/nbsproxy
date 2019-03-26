@@ -28,7 +28,9 @@ import android.util.Log;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+
 import junit.framework.Assert;
 
 public class PortReg {
@@ -67,21 +69,25 @@ public class PortReg {
     }
 
     public interface OnHaveAppIDs {
-        void haveAppIDs( String[] appIDs );
+        void haveAppIDs( Map<Short, String[]> appIDsMap );
     }
 
-    public static void lookup( Context context, final short port,
+    public static void lookup( Context context, final short[] ports,
                                final OnHaveAppIDs proc )
     {
         onMapLoaded( context, new Runnable() {
                 @Override
                 public void run() {
-                    String[] result = {};
-                    Set<String> apps = sMap.get( port );
-                    if ( apps != null ) {
-                        result = apps.toArray( new String[apps.size()] );
+                    Map<Short, String[]> map = new HashMap<>();
+                    for ( short port : ports ) {
+                        String[] appIDs = {};
+                        Set<String> apps = sMap.get( port );
+                        if ( apps != null ) {
+                            appIDs = apps.toArray( new String[apps.size()] );
+                        }
+                        map.put( port, appIDs );
                     }
-                    proc.haveAppIDs( result );
+                    proc.haveAppIDs( map );
                 }
             } );
     }
