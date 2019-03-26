@@ -67,15 +67,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Keep these two arrays in sync
-    private static final int sTabTitles[] = { R.string.tab_perms_title,
+    private static final int[] sTabTitles = { R.string.tab_perms_title,
                                               R.string.tab_about_title,
-                                              R.string.tab_test_title,
                                               R.string.tab_stats_title,
+                                              R.string.tab_test_title,
     };
     public static final int[] sLayouts = { R.layout.fragment_perms,
                                            R.layout.fragment_about,
-                                           R.layout.fragment_test,
                                            R.layout.fragment_stats,
+                                           R.layout.fragment_test,
     };
 
 

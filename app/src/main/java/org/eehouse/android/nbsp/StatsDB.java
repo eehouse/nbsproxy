@@ -99,8 +99,8 @@ public class StatsDB {
         public String stats()
         {
             return String
-                .format( "count in: %d, bytes in: %d, count out: %d, bytes out: %d",
-                         countRX, bytesRX, countTX, bytesTX );
+                .format( "out: {msgs: %d, bytes: %d}, in: {msgs: %d, bytes: %d}",
+                         countTX, bytesTX, countRX, bytesRX );
         }
 
         public short getPort() { return port; }

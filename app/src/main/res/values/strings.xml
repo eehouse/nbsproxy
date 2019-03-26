@@ -45,14 +45,14 @@
     <string name="tab_about_title">About</string>
     <string name="tab_perms_title">Permissions</string>
     <string name="tab_test_title">Test</string>
+    <string name="tab_stats_title">Stats</string>
 
     <string name="test_expl">Use the button below to confirm that NBS
-    works on your phone. It sends 32 random bytes to your phone number
-    and verifies that they\'re received unchanged.\n\nYou\'ll see a
-    notification when the message is received, including how long it
-    took.</string>
+    works on your phone. It sends between 24 and 48 random bytes to
+    your phone number and verifies that they\'re received
+    unchanged.\n\nYou\'ll see an on-screen notification when the
+    message is received, including how long it took.</string>
 
-    <string name="tab_stats_title">Statistics</string>
 
     <string name="test_result_fmt">Send-to-self test succeeded, taking %.2f seconds.</string>
 
