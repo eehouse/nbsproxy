@@ -50,6 +50,7 @@ import android.widget.CompoundButton;
 import java.util.Map;
 
 import org.eehouse.android.nbsp.PortReg;
+import org.eehouse.android.nbsp.StatsDB;
 import org.eehouse.android.nbsp.R;
 import org.eehouse.android.nbsp.ui.PageFragment;
 import org.eehouse.android.nbsplib.NBSProxy;
@@ -57,6 +58,7 @@ import org.eehouse.android.nbsplib.NBSProxy;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final int ID_OFFSET = 1000;
+    private static final String KEY_CUR_TAB = TAG + ".curTab";
 
     private static MainActivity sSelf;
 
@@ -92,6 +94,22 @@ public class MainActivity extends AppCompatActivity {
         mViewPager.setAdapter(new SampleFragmentPagerAdapter(getSupportFragmentManager(),
                                                              this));
 
+        mViewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+                @Override
+                public void onPageScrolled(int position, float positionOffset,
+                                           int positionOffsetPixels) {
+                }
+
+                @Override
+                public void onPageSelected( int position ) {
+                    StatsDB.put( MainActivity.this, KEY_CUR_TAB, position );
+                }
+
+                @Override
+                public void onPageScrollStateChanged(int state) {
+                }
+            });
+
         // Give the TabLayout the ViewPager
         TabLayout tabLayout = (TabLayout)findViewById( R.id.sliding_tabs );
         tabLayout.setupWithViewPager( mViewPager );
@@ -101,6 +119,16 @@ public class MainActivity extends AppCompatActivity {
         } else if ( !NBSProxy.isGSMPhone( this ) ) {
             showNotGSMAlert();
         }
+
+        StatsDB.get( this, KEY_CUR_TAB, -1, new StatsDB.OnHaveInt() {
+                @Override
+                public void onHaveData( String key, int data ) {
+                    if ( data != -1 ) {
+                        // Apparently I don't have to be on UI thread to do this
+                        mViewPager.setCurrentItem( data );
+                    }
+                }
+            });
     }
 
     @Override

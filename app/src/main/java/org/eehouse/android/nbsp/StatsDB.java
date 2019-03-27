@@ -224,6 +224,10 @@ public class StatsDB {
         void onHaveData( String key, String data );
     }
 
+    public interface OnHaveInt {
+        void onHaveData( String key, int data );
+    }
+
     public interface OnHaveSerializable {
         void onHaveData( String key, Serializable data );
     }
@@ -247,6 +251,14 @@ public class StatsDB {
     public static void put( Context context, String key, String value )
     {
         KVPair pair = new KVPair( key, value );
+        Carrier carrier = new Carrier( context, pair );
+        add( carrier );
+    }
+
+    public static void put( Context context, String key, int value )
+    {
+        String asStr = String.format( "%d", value );
+        KVPair pair = new KVPair( key, asStr );
         Carrier carrier = new Carrier( context, pair );
         add( carrier );
     }
@@ -276,6 +288,18 @@ public class StatsDB {
     public static void get( Context context, String key, OnHaveString proc )
     {
         StringRequest request = new StringRequest( key, proc );
+        add( new Carrier( context, request ) );
+    }
+
+    public static void get( Context context, String key, final int dflt, final OnHaveInt proc )
+    {
+        StringRequest request = new StringRequest( key, new OnHaveString() {
+                @Override
+                public void onHaveData( String key, String asStr ) {
+                    int result = asStr == null ? dflt : Integer.parseInt( asStr );
+                    proc.onHaveData( key, result );
+                }
+            } );
         add( new Carrier( context, request ) );
     }
 
