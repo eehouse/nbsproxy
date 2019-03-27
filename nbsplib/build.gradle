@@ -1,7 +1,7 @@
 apply plugin: 'com.android.library'
 
 // This should match the tag, and version string of NBSProxy app
-def NBSP_VERSION = "0.2.1"
+def NBSP_VERSION = "0.2.3"
 
 android {
     compileSdkVersion 27

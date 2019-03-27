@@ -6,8 +6,8 @@ android {
         applicationId "org.eehouse.android.nbsp"
         minSdkVersion 14
         targetSdkVersion 27
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.2.3"     // should match NBSP_VERSION
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
 
