@@ -32,6 +32,8 @@ import org.eehouse.android.nbsplib.NBSProxy;
 import org.eehouse.android.nbsp.NBSReceiver;
 import org.eehouse.android.nbsp.ui.MainActivity;
 
+import org.eehouse.android.libs.apkupgrader.ApkUpgrader;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -109,6 +111,17 @@ public class NBSPApp extends Application {
         }
 
         NBSReceiver.onAppLaunched( this );
+
+        ApkUpgrader.getConfig(this)
+            .setInterval( ApkUpgrader.Interval.WEEKLY )
+            .setScheme( ApkUpgrader.Scheme.HTTPS )
+            .setHost( "eehouse.org" )
+            .setPath( null )    // script's at http root
+            .setAppInfo( BuildConfig.APPLICATION_ID, BuildConfig.VERSION_CODE,
+                         BuildConfig.BUILD_TYPE, BuildConfig.FLAVOR )
+            .setForNotifications( MainActivity.makeChannelID( this ),
+                                  R.mipmap.ic_launcher_round )
+            ;
     }
 
     public static void setNBSCallback( byte[] data, NBSProxy.Callbacks proc )

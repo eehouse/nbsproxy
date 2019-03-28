@@ -30,7 +30,6 @@ import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
-// import android.widget.CheckBox;
 import android.widget.Button;
 import android.widget.CompoundButton;
 
@@ -46,7 +45,6 @@ public class PermsFragment extends PageFragment {
         Manifest.permission.SEND_SMS,
         Manifest.permission.READ_PHONE_STATE,
     };
-    // private Button mPermsButton;
     private View mView;
 
     @Override

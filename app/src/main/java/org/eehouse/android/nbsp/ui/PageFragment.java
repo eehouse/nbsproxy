@@ -19,6 +19,7 @@
 
 package org.eehouse.android.nbsp.ui;
 
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -27,6 +28,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import org.eehouse.android.libs.apkupgrader.ApkUpgrader;
 
 import org.eehouse.android.nbsp.BuildConfig;
 import org.eehouse.android.nbsp.R;
@@ -86,6 +89,16 @@ public class PageFragment extends Fragment {
                             .setData(Uri.parse("package:" + BuildConfig.APPLICATION_ID ) )
                             .putExtra( "android.intent.extra.UNINSTALL_ALL_USERS", true);
                         startActivity(intent);
+                    }
+                } );
+        }
+
+        button = view.findViewById(R.id.update_button);
+        if ( button != null ) {
+            button.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        ApkUpgrader.checkNow( getActivity() );
                     }
                 } );
         }
