@@ -98,10 +98,14 @@ public class StatsDB {
 
         public String stats()
         {
+            long avgTX = countTX == 0 ? 0 : bytesTX / countTX;
+            long avgRX = countRX == 0 ? 0 : bytesRX / countRX;
             return String
-                .format( "out: {msgs: %d, bytes: %d}, in: {msgs: %d, bytes: %d}",
-                         countTX, bytesTX, countRX, bytesRX );
+                .format( "out: {%d:%d:%d}, in: {%d:%d:%d}",
+                         countTX, bytesTX, avgTX, countRX, bytesRX, avgRX );
         }
+
+        public static String legend() { return "{msg count:total bytes:avg size}"; }
 
         public short getPort() { return port; }
 

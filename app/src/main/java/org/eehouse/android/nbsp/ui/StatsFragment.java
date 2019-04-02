@@ -79,6 +79,10 @@ public class StatsFragment extends PageFragment {
             final Activity activity = getActivity();
             final StringBuilder sb = new StringBuilder();
 
+            sb.append("Legend: ")
+                .append(HourRecord.legend())
+                .append("\n\n");
+
             for ( short port : mData.keys() ) {
                 String app = mData.appNameFor( port );
                 sb.append("app: ")
