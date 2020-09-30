@@ -506,10 +506,10 @@ public class StatsDB {
                     public void haveAppIDs( Map<Short, String[]> appIDs ) {
                         for ( short port : ports ) {
                             String[] appIdsFor = appIDs.get( port );
-                            if ( appIdsFor != null ) {
+                            if ( appIdsFor != null && 1 == appIdsFor.length ) {
                                 result.setAppName( port, appIdsFor[0] );
                             } else {
-                                Log.d( TAG, "null for port " + port );
+                                Log.d( TAG, "nothing for port: " + port );
                             }
                         }
                         entry.proc.onHaveData( result );
