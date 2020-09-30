@@ -105,8 +105,6 @@ public class StatsDB {
                          countTX, bytesTX, avgTX, countRX, bytesRX, avgRX );
         }
 
-        public static String legend() { return "{msg count:total bytes:avg size}"; }
-
         public short getPort() { return port; }
 
         /**

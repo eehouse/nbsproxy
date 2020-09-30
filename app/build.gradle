@@ -28,8 +28,8 @@ android {
     }
 
     buildTypes {
-		all {
-			resValue "string", "nbsp_port", "4369"
+        all {
+            resValue "string", "nbsp_port", "4369"
             buildConfigField "String", "GIT_REV", "\"$GITREV\""
 
             def stamp = Math.round(System.currentTimeMillis() / 1000)

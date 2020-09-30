@@ -88,7 +88,13 @@
     <string name="stats_col_three">Lifetime:</string>
 
     <string name="version_text_fmt">This is NBSProxy, version %1$s,
-    rev %2$s, built on %3$s.\n\nCopyright (C) 2019 by Eric House. This
-    free/open source software is released under the GNU Public
-    License.</string>
+    rev %2$s, built on %3$s.\n\nCopyright (C) 2019 - 2020 by Eric
+    House. This free/open source software is released under the GNU
+    Public License.</string>
+
+    <!-- shown at top of stats page to explain the data below -->
+    <string name="stats_legend">{Legend: msg count:total bytes:avg size}</string>
+    <!-- Line starting each app's record -->
+    <string name="stats_app_fmt">app: %1$s; port: %2$d</string>
+
 </resources>
